@@ -29,15 +29,42 @@
 
 namespace GlassRoom {
     public class Application: Gtk.Application {
+
+        public Gst.Pipeline pipeline {get; }
+
+        construct {
+            add_option_group (Gst.init_get_option_group());
+
+        }
+
         public Application () {
             Object (application_id: "standalone.glassroom.GlassRoom",
                     flags: ApplicationFlags.FLAGS_NONE);
+        }
+
+        public override void startup () {
+            base.startup();
+
+            _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
+
+            // TODO: This is priliminary connection.
+            //       1. Assemble pipeline at right position.
+            //       2. Replace test elements into right elements, when ready.
+
+            Gst.Element source = Gst.ElementFactory.make ("videotestsrc", "source");
+            Gst.Element sink = Gst.ElementFactory.make ("autovideosink", "sink");
+
+            _pipeline.add (source);
+            _pipeline.add (sink);
+            source.link (sink);
         }
 
         public override void activate () {
             base.activate ();
             var window = active_window ?? new GlassRoom.Window (this);
             window.present ();
+
+            _pipeline.set_state (Gst.State.PLAYING);
         }
     }
 }
