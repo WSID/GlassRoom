@@ -32,6 +32,9 @@ namespace GlassRoom {
 
         public Gst.Pipeline pipeline {get; }
 
+        private Gst.Element source;
+        private Gst.Element sink;
+
         construct {
             add_option_group (Gst.init_get_option_group());
 
@@ -51,17 +54,24 @@ namespace GlassRoom {
             //       1. Assemble pipeline at right position.
             //       2. Replace test elements into right elements, when ready.
 
-            Gst.Element source = Gst.ElementFactory.make ("videotestsrc", "source");
-            Gst.Element sink = Gst.ElementFactory.make ("autovideosink", "sink");
+            source = Gst.ElementFactory.make ("videotestsrc", "source");
 
             _pipeline.add (source);
-            _pipeline.add (sink);
-            source.link (sink);
         }
 
         public override void activate () {
             base.activate ();
-            var window = active_window ?? new GlassRoom.Window (this);
+            var window = active_window;
+
+            if (window == null) {
+                var grwindow = new GlassRoom.Window (this);
+
+                sink = grwindow.view_sink;
+                _pipeline.add (sink);
+                source.link (sink);
+
+                window = grwindow;
+            }
             window.present ();
 
             _pipeline.set_state (Gst.State.PLAYING);

@@ -30,6 +30,27 @@
 namespace GlassRoom {
 	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/window.ui")]
 	public class Window : Gtk.ApplicationWindow {
+
+        public Gst.Video.Sink view_sink {get; }
+
+        [GtkChild(name="content-pane")]
+        private Gtk.Paned content_pane;
+
+	    private Gtk.Widget view_widget;
+
+	    construct {
+	        _view_sink = Gst.ElementFactory.make ("gtksink", "view-sink") as Gst.Video.Sink;
+	        if (_view_sink == null) {
+	            critical ("gtksink is not available on system.");
+	        }
+
+            else {
+                _view_sink.get ("widget", out view_widget);
+                content_pane.add (view_widget);
+                view_widget.show();
+            }
+	    }
+
 		public Window (Gtk.Application app) {
 			Object (application: app);
 		}
