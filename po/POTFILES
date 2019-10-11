@@ -1,0 +1,7 @@
+data/standalone.glassroom.GlassRoom.desktop.in
+data/standalone.glassroom.GlassRoom.appdata.xml.in
+data/standalone.glassroom.GlassRoom.gschema.xml
+src/window.ui
+src/main.vala
+src/window.vala
+
