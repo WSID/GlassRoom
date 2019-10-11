@@ -1,4 +1,4 @@
-/* main.vala
+/* application.vala
  *
  * Copyright 2019 Wissle
  *
@@ -27,7 +27,17 @@
  * authorization.
  */
 
-int main (string[] args) {
-	var app = new GlassRoom.Application ();
-	return app.run (args);
+namespace GlassRoom {
+    public class Application: Gtk.Application {
+        public Application () {
+            Object (application_id: "standalone.glassroom.GlassRoom",
+                    flags: ApplicationFlags.FLAGS_NONE);
+        }
+
+        public override void activate () {
+            base.activate ();
+            var window = active_window ?? new GlassRoom.Window (this);
+            window.present ();
+        }
+    }
 }
