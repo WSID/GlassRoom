@@ -37,30 +37,55 @@ namespace GlassRoom {
      * This will handle this.
      */
     public class SrcBin : Gst.Bin {
-        public string source_factory_name {get; construct; }
-        public Gst.Base.Src? source {get; }
 
-        construct {
-            Gst.Element? element = Gst.ElementFactory.make (source_factory_name, "source");
-            if (element == null) {
-                critical ("source make failed for factory \"%s\"", source_factory_name);
-                return;
+        private string? _source_factory_name;
+
+        private Gst.Base.Src? source;
+        private Gst.GhostPad pad;
+
+        public string? source_factory_name {
+            get {
+                return _source_factory_name;
             }
+            set {
+                if (_source_factory_name == value)
+                    return;
 
-            _source = element as Gst.Base.Src;
+                if (source != null) {
+                    source.set_state(Gst.State.NULL);
+                    pad.set_target (null);
+                    remove (source);
+                    source = null;
+                }
 
-            if (_source != null) {
-                add (_source);
-                var src_pad = _source.get_static_pad ("src");
-                var bin_pad = new Gst.GhostPad ("src", src_pad);
-                add_pad (bin_pad);
-            }
-            else {
-                critical ("\"%s\" is not source element.", source_factory_name);
+                _source_factory_name = value;
+
+                if (value == null) return;
+
+                Gst.Element? element = Gst.ElementFactory.make (value, "source");
+
+                if (element == null) {
+                    warning ("Cannot make source for factory \"%s\"", _source_factory_name);
+                    return;
+                }
+
+                source = element as Gst.Base.Src;
+                if (source == null) {
+                    warning ("\"%s\" is not source", _source_factory_name);
+                    return;
+                }
+
+                add (source);
+                pad.set_target (source.get_static_pad ("src"));
             }
         }
 
-        public SrcBin (string name, string factory_name) {
+        construct {
+            pad = new Gst.GhostPad.no_target ("src", Gst.PadDirection.SRC);
+            add_pad (pad);
+        }
+
+        public SrcBin (string name, string? factory_name = null) {
             Object (name: name, source_factory_name: factory_name);
         }
     }
