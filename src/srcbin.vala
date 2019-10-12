@@ -1,4 +1,4 @@
-/* application.vala
+/* srcbin.vala
  *
  * Copyright 2019 Wissle
  *
@@ -26,55 +26,42 @@
  * use or other dealings in this Software without prior written
  * authorization.
  */
-
 namespace GlassRoom {
-    public class Application: Gtk.Application {
-
-        public Gst.Pipeline pipeline {get; }
-
-        private Gst.Element source;
-        private Gst.Element sink;
+    /**
+     * A Gst.Bin represents a source that GlassRoom manages.
+     *
+     * A single Gst.PushSrc cannot be used directly in GlassRoom. Someone wants
+     * to apply filtering operation, like chroma-key. Sometimes, buffering is
+     * required too.
+     *
+     * This will handle this.
+     */
+    public class SrcBin : Gst.Bin {
+        public string source_factory_name {get; construct; }
+        public Gst.Base.Src? source {get; }
 
         construct {
-            add_option_group (Gst.init_get_option_group());
-
-        }
-
-        public Application () {
-            Object (application_id: "standalone.glassroom.GlassRoom",
-                    flags: ApplicationFlags.FLAGS_NONE);
-        }
-
-        public override void startup () {
-            base.startup();
-
-            _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
-
-            // TODO: This is priliminary connection.
-            //       1. Assemble pipeline at right position.
-            //       2. Replace test elements into right elements, when ready.
-
-            source = new GlassRoom.SrcBin ("source", "videotestsrc");
-
-            _pipeline.add (source);
-        }
-
-        public override void activate () {
-            base.activate ();
-            var window = active_window;
-
-            if (window == null) {
-                var grwindow = new GlassRoom.Window (this);
-
-                sink = grwindow.view_sink;
-                _pipeline.add (sink);
-                source.link (sink);
-
-                window = grwindow;
+            Gst.Element? element = Gst.ElementFactory.make (source_factory_name, "source");
+            if (element == null) {
+                critical ("source make failed for factory \"%s\"", source_factory_name);
+                return;
             }
-            window.present ();
 
-            _pipeline.set_state (Gst.State.PLAYING);
+            _source = element as Gst.Base.Src;
+
+            if (_source != null) {
+                add (_source);
+                var src_pad = _source.get_static_pad ("src");
+                var bin_pad = new Gst.GhostPad ("src", src_pad);
+                add_pad (bin_pad);
+            }
+            else {
+                critical ("\"%s\" is not source element.", source_factory_name);
+            }
+        }
+
+        public SrcBin (string name, string factory_name) {
+            Object (name: name, source_factory_name: factory_name);
         }
     }
 }
