@@ -45,9 +45,12 @@ namespace GlassRoom {
             table[typeof (bool)] = typeof (PropertyEditBool);
             table[typeof (int)] = typeof (PropertyEditInt);
             table[typeof (uint)] = typeof (PropertyEditUint);
+            table[typeof (int64)] = typeof (PropertyEditI64);
+            table[typeof (uint64)] = typeof (PropertyEditU64);
             table[typeof (float)] = typeof (PropertyEditFloat);
             table[typeof (double)] = typeof (PropertyEditDouble);
             table[typeof (string)] = typeof (PropertyEditString);
+            table[typeof (Gst.Fraction)] = typeof (PropertyEditFraction);
             return (owned) table;
         }
 
@@ -274,6 +277,114 @@ namespace GlassRoom {
         }
     }
 
+    // I cannot use Gtk.SpinButton. The spin button uses double, and the
+    // precision was 31bit, not 64bit.
+    public class PropertyEditI64: Gtk.Entry, GlassRoom.PropertyEdit {
+        private int64 prop_value_int;
+
+        public GLib.ParamSpec? prop_spec {get; set;}
+        public GLib.Value prop_value {
+            owned get {
+                return prop_value_int;
+            }
+            set {
+                prop_value_int = value.get_int64();
+                text = prop_value_int.to_string();
+            }
+        }
+
+        construct {
+            input_purpose = Gtk.InputPurpose.NUMBER;
+
+            changed.connect (() => {
+                unowned string unparsed;
+                int64 nvalue;
+                if (! int64.try_parse (text, out nvalue, out unparsed)) {
+                    GLib.Signal.stop_emission_by_name (this, "changed");
+                    text = text[0 : text.pointer_to_offset(unparsed)];
+                }
+
+                GLib.ParamSpecInt64? pspec_i64 = prop_spec as GLib.ParamSpecInt64;
+
+                if (pspec_i64 != null) {
+                    nvalue = nvalue.clamp(pspec_i64.minimum, pspec_i64.maximum);
+                }
+
+                if (nvalue != prop_value_int) {
+                    prop_value_int = nvalue;
+                    notify_property ("prop-value");
+                }
+            });
+        }
+
+        public string? make_tooltip_markup () {
+            GLib.ParamSpecInt64? pspec_i64 = prop_spec as GLib.ParamSpecInt64;
+
+            if (pspec_i64 == null) return null;
+            else {
+                int64 def_value = pspec_i64.default_value;
+                int64 minimum = pspec_i64.minimum;
+                int64 maximum = pspec_i64.maximum;
+                unowned string blurb = prop_spec.get_blurb();
+
+                return @"<b>64-bit integer value</b>\n<b>Default</b>: $def_value\n<b>Minimum</b>: $minimum\n<b>Maximum</b>: $maximum\n$blurb";
+            }
+        }
+    }
+
+    public class PropertyEditU64: Gtk.Entry, GlassRoom.PropertyEdit {
+        private uint64 prop_value_uint;
+
+        public GLib.ParamSpec? prop_spec {get; set;}
+        public GLib.Value prop_value {
+            owned get {
+                return prop_value_uint;
+            }
+            set {
+                prop_value_uint = value.get_uint64();
+                text = prop_value_uint.to_string();
+            }
+        }
+
+        construct {
+            input_purpose = Gtk.InputPurpose.NUMBER;
+
+            changed.connect (() => {
+                unowned string unparsed;
+                uint64 nvalue;
+                if (! int64.try_parse (text, out nvalue, out unparsed)) {
+                    GLib.Signal.stop_emission_by_name (this, "changed");
+                    text = text[0 : text.pointer_to_offset(unparsed)];
+                }
+
+                GLib.ParamSpecUInt64? pspec_u64 = prop_spec as GLib.ParamSpecUInt64;
+
+                if (pspec_u64 != null) {
+                    nvalue = nvalue.clamp(pspec_u64.minimum, pspec_u64.maximum);
+                }
+
+                if (nvalue != prop_value_uint) {
+                    prop_value_uint = nvalue;
+                    notify_property ("prop-value");
+                }
+            });
+        }
+
+        public string? make_tooltip_markup () {
+            GLib.ParamSpecUInt64? pspec_u64 = prop_spec as GLib.ParamSpecUInt64;
+
+            if (pspec_u64 == null) return null;
+            else {
+                uint64 def_value = pspec_u64.default_value;
+                uint64 minimum = pspec_u64.minimum;
+                uint64 maximum = pspec_u64.maximum;
+                unowned string blurb = prop_spec.get_blurb();
+
+                return @"<b>64-bit integer value</b>\n<b>Default</b>: $def_value\n<b>Minimum</b>: $minimum\n<b>Maximum</b>: $maximum\n$blurb";
+            }
+        }
+    }
+
     public class PropertyEditString: Gtk.Entry, GlassRoom.PropertyEdit {
         public GLib.ParamSpec? prop_spec {get; set; }
 
@@ -393,6 +504,74 @@ namespace GlassRoom {
 
                 return @"<b>Choice ($type_name)</b>\n<b>Default</b>: $def_value\n$blurb";
             }
+        }
+    }
+
+    // With existence of '/', the edit will be applied when focus is lost, or
+    // activated (user pressed Enter on Entry, ...)
+    public class PropertyEditFraction: Gtk.Entry, GlassRoom.PropertyEdit {
+        private int num = 1;
+        private int den = 1;
+
+        private bool editing;
+
+        [CCode (cname="gst_value_set_fraction")]
+        private static extern void value_set_fraction(ref Value value, int num, int den);
+
+        public ParamSpec? prop_spec {get; set; }
+
+        public Value prop_value {
+            owned get {
+                Value value = Value (typeof (Gst.Fraction));
+                value_set_fraction (ref value, num, den);
+                return value;
+            }
+            set {
+                num = Gst.Value.get_fraction_numerator (value);
+                den = Gst.Value.get_fraction_denominator (value);
+
+                text = @"$num / $den";
+                editing = false;
+            }
+        }
+
+        construct {
+            activate.connect (() => commit_edit());
+            focus_out_event.connect (() => {
+                commit_edit();
+                return false;
+            });
+
+            changed.connect (() => {
+                editing = true;
+            });
+        }
+
+        public virtual string? make_tooltip_markup () {
+            if (prop_spec == null) return null;
+            if (prop_spec.value_type != typeof (Gst.Fraction)) return null;
+
+            Gst.ParamSpecFraction* pspec_frac = (Gst.ParamSpecFraction*) (prop_spec);
+
+            int def_num = pspec_frac->def_num;
+            int def_den = pspec_frac->def_den;
+            int min_num = pspec_frac->min_num;
+            int min_den = pspec_frac->min_den;
+            int max_num = pspec_frac->max_num;
+            int max_den = pspec_frac->max_den;
+
+            unowned string blurb = prop_spec.get_blurb();
+
+            return @"<b>Fractional value</b>\n<b>Default</b>: $def_num / $def_den\n<b>Minimum</b>: $min_num / $min_den\n<b>Maximum</b>: $max_num / $max_den\n$blurb";
+        }
+
+        private void commit_edit () {
+            int items = text.scanf ("%d / %d", out num, out den);
+
+            if (items == 1) den = 1;
+
+            text = @"$num / $den";
+            editing = false;
         }
     }
 }
