@@ -47,14 +47,23 @@ namespace GlassRoom {
             table[typeof (uint)] = typeof (PropertyEditUint);
             table[typeof (float)] = typeof (PropertyEditFloat);
             table[typeof (double)] = typeof (PropertyEditDouble);
+            table[typeof (string)] = typeof (PropertyEditString);
             return (owned) table;
         }
 
-        public static PropertyEdit? get_for_type (Type value_type) {
+        public static Type get_editor_type_for (Type value_type) {
             unowned HashTable<Type, Type> table_value_edit;
             table_value_edit = once_table_value_edit.once(prepare_table);
 
-            Type edit_type = table_value_edit[value_type];
+            Type editor_type = table_value_edit[value_type];
+            if (editor_type != Type.INVALID) return editor_type;
+
+            if (value_type.is_enum()) return typeof (PropertyEditEnum);
+            return Type.INVALID;
+        }
+
+        public static PropertyEdit? get_for_type (Type value_type) {
+            Type edit_type = get_editor_type_for (value_type);
             if (edit_type == Type.INVALID) {
                 return null;
             }
@@ -64,11 +73,7 @@ namespace GlassRoom {
         }
 
         public static PropertyEdit? get_for_pspec (GLib.ParamSpec param_spec) {
-            unowned HashTable<Type, Type> table_value_edit;
-            table_value_edit = once_table_value_edit.once(prepare_table);
-
-            Type value_type = param_spec.value_type;
-            Type edit_type = table_value_edit[value_type];
+            Type edit_type = get_editor_type_for (param_spec.value_type);
             if (edit_type == Type.INVALID) {
                 return null;
             }
@@ -82,7 +87,7 @@ namespace GlassRoom {
 
 
         public abstract GLib.ParamSpec? prop_spec {get; set;}
-        public abstract GLib.Value prop_value {get; set;}
+        public abstract GLib.Value prop_value {owned get; set;}
 
         public virtual string? make_tooltip_markup () {
             if (prop_spec == null) return null;
@@ -99,7 +104,7 @@ namespace GlassRoom {
     public class PropertyEditBool: Gtk.CheckButton, GlassRoom.PropertyEdit {
         public GLib.ParamSpec? prop_spec {get; set;}
         public GLib.Value prop_value {
-            get { return active; }
+            owned get { return active; }
             set { active = (bool) value; }
         }
 
@@ -122,7 +127,7 @@ namespace GlassRoom {
 
     public abstract class PropertyEditNum: Gtk.SpinButton, GlassRoom.PropertyEdit {
         public abstract GLib.ParamSpec? prop_spec {get; set;}
-        public abstract GLib.Value prop_value {get; set;}
+        public abstract GLib.Value prop_value {owned get; set;}
 
         construct {
             value_changed.connect (() => notify_property("prop-value"));
@@ -145,7 +150,7 @@ namespace GlassRoom {
         }
 
         public override GLib.Value prop_value {
-            get { return get_value_as_int (); }
+            owned get { return get_value_as_int (); }
             set { this.value = (double) value.get_int(); }
         }
 
@@ -180,7 +185,7 @@ namespace GlassRoom {
         }
 
         public override GLib.Value prop_value {
-            get { return (uint) value; }
+            owned get { return (uint) value; }
             set { this.value = (double) value.get_uint(); }
         }
 
@@ -215,7 +220,7 @@ namespace GlassRoom {
         }
 
         public override GLib.Value prop_value {
-            get { return (float) get_value(); }
+            owned get { return (float) get_value(); }
             set { this.value = (double) value.get_float(); }
         }
 
@@ -250,7 +255,7 @@ namespace GlassRoom {
         }
 
         public override GLib.Value prop_value {
-            get { return value; }
+            owned get { return value; }
             set { this.value = value.get_double(); }
         }
 
@@ -265,6 +270,128 @@ namespace GlassRoom {
                 unowned string blurb = prop_spec.get_blurb();
 
                 return @"<b>Double precision float value</b>\n<b>Default</b>: $def_value\n<b>Minimum</b>: $minimum\n<b>Maximum</b>: $maximum\n$blurb";
+            }
+        }
+    }
+
+    public class PropertyEditString: Gtk.Entry, GlassRoom.PropertyEdit {
+        public GLib.ParamSpec? prop_spec {get; set; }
+
+        public GLib.Value prop_value {
+            owned get { return text; }
+            set { text = value.get_string() ?? ""; }
+        }
+
+        construct {
+            changed.connect (() => notify_property("prop-value"));
+        }
+
+        public virtual string? make_tooltip_markup () {
+            GLib.ParamSpecString? pspec_string = prop_spec as GLib.ParamSpecString;
+            if (pspec_string == null) return null;
+            else {
+                unowned string def_value = pspec_string.default_value ?? "";
+                unowned string blurb = prop_spec.get_blurb();
+
+                return @"<b>Text</b>\n<b>Default</b>: $def_value\n$blurb";
+            }
+        }
+    }
+
+    public class PropertyEditEnum: Gtk.ComboBox, GlassRoom.PropertyEdit {
+        private GLib.ParamSpec? _prop_spec;
+        private GLib.EnumClass? enum_cls;
+        private Gtk.ListStore? list_store; // (Enum Type), string.
+
+        // list_store holds int for value, string for presentation.
+
+        public GLib.ParamSpec? prop_spec {
+            get {
+                return _prop_spec;
+            }
+            set {
+                GLib.ParamSpecEnum? pspec_enum = value as GLib.ParamSpecEnum;
+                if (_prop_spec == pspec_enum) return;
+
+                _prop_spec = pspec_enum;
+
+                if (_prop_spec != null) {
+                    Type enum_type = _prop_spec.value_type;
+                    enum_cls = (GLib.EnumClass) enum_type.class_ref();
+                    list_store = new Gtk.ListStore (3, enum_type, typeof (string), typeof (string));
+
+                    foreach (unowned EnumValue enum_value in enum_cls.values) {
+                        Gtk.TreeIter iter;
+                        list_store.append (out iter);
+                        list_store.set (iter,
+                                        0, enum_value.value,
+                                        1, enum_value.value_name,
+                                        2, enum_value.value_nick);
+                    }
+
+                    set_model(list_store);
+                }
+                else {
+                    enum_cls = null;
+                    list_store = null;
+                    set_model(null);
+                }
+            }
+        }
+
+        public GLib.Value prop_value {
+            owned get {
+                if (enum_cls != null) {
+                    Gtk.TreeIter enum_iter;
+                    GLib.Value enum_value;
+
+                    get_active_iter (out enum_iter);
+                    list_store.get_value(enum_iter, 0, out enum_value);
+                    return enum_value;
+                }
+                else {
+                    return (int)0;
+                }
+            }
+            set {
+                if (enum_cls != null) {
+                    int int_value = value.get_enum ();
+
+                    for (int index = 0; index < enum_cls.n_values; index++) {
+                        if (enum_cls.values[index].value == int_value) {
+                            active = index;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        construct {
+            Gtk.CellAreaBox cell_area = new Gtk.CellAreaBox ();
+            Gtk.CellRendererText cell_text = new Gtk.CellRendererText ();
+            cell_text.visible = true;
+
+            cell_area.pack_start (cell_text, true);
+            cell_area.add_attribute (cell_text, "text", 2);
+            this.cell_area = cell_area;
+
+            id_column = 1;
+
+            changed.connect (() => notify_property("prop-value"));
+        }
+
+        public virtual string? make_tooltip_markup () {
+            GLib.ParamSpecEnum? pspec_enum = prop_spec as GLib.ParamSpecEnum;
+            if (pspec_enum == null) return null;
+            else {
+                unowned EnumValue? def_value_enum = enum_cls.get_value(pspec_enum.default_value);
+
+                unowned string type_name = pspec_enum.value_type.name();
+                unowned string def_value = def_value_enum.value_nick;
+                unowned string blurb = pspec_enum.get_blurb();
+
+                return @"<b>Choice ($type_name)</b>\n<b>Default</b>: $def_value\n$blurb";
             }
         }
     }
