@@ -2,7 +2,8 @@ glass_room_sources = [
   'main.vala',
   'application.vala',
   'window.vala',
-  'propertyedit.vala'
+  'propertyedit.vala',
+  'propertyform.vala'
 ]
 
 glass_room_deps = [
