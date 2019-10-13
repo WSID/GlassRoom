@@ -103,9 +103,8 @@ namespace GlassRoom {
             set { active = (bool) value; }
         }
 
-        public override void toggled () {
-            base.toggled();
-            notify_property("prop-value");
+        construct {
+            toggled.connect (() => notify_property("prop-value"));
         }
 
         public override string? make_tooltip_markup () {
@@ -121,10 +120,19 @@ namespace GlassRoom {
         }
     }
 
-    public class PropertyEditInt: Gtk.SpinButton, GlassRoom.PropertyEdit {
+    public abstract class PropertyEditNum: Gtk.SpinButton, GlassRoom.PropertyEdit {
+        public abstract GLib.ParamSpec? prop_spec {get; set;}
+        public abstract GLib.Value prop_value {get; set;}
+
+        construct {
+            value_changed.connect (() => notify_property("prop-value"));
+        }
+    }
+
+    public class PropertyEditInt: GlassRoom.PropertyEditNum, GlassRoom.PropertyEdit {
         private GLib.ParamSpec? _prop_spec;
 
-        public GLib.ParamSpec? prop_spec {
+        public override GLib.ParamSpec? prop_spec {
             get { return _prop_spec; }
             set {
                 GLib.ParamSpecInt? prop_spec_int = value as GLib.ParamSpecInt;
@@ -136,17 +144,12 @@ namespace GlassRoom {
             }
         }
 
-        public GLib.Value prop_value {
+        public override GLib.Value prop_value {
             get { return get_value_as_int (); }
-            set { value = (double) value.get_int(); }
+            set { this.value = (double) value.get_int(); }
         }
 
-        public override void value_changed () {
-            base.value_changed();
-            notify_property("prop-value");
-        }
-
-        public override string? make_tooltip_markup () {
+        public string? make_tooltip_markup () {
             GLib.ParamSpecInt? pspec_int = prop_spec as GLib.ParamSpecInt;
 
             if (pspec_int == null) return null;
@@ -161,10 +164,10 @@ namespace GlassRoom {
         }
     }
 
-    public class PropertyEditUint: Gtk.SpinButton, GlassRoom.PropertyEdit {
+    public class PropertyEditUint: GlassRoom.PropertyEditNum, GlassRoom.PropertyEdit {
         private GLib.ParamSpec? _prop_spec;
 
-        public GLib.ParamSpec? prop_spec {
+        public override GLib.ParamSpec? prop_spec {
             get { return _prop_spec; }
             set {
                 GLib.ParamSpecUInt? prop_spec_uint = value as GLib.ParamSpecUInt;
@@ -176,17 +179,12 @@ namespace GlassRoom {
             }
         }
 
-        public GLib.Value prop_value {
+        public override GLib.Value prop_value {
             get { return (uint) value; }
-            set { value = (double) value.get_uint(); }
+            set { this.value = (double) value.get_uint(); }
         }
 
-        public override void value_changed () {
-            base.value_changed();
-            notify_property("prop-value");
-        }
-
-        public override string? make_tooltip_markup () {
+        public string? make_tooltip_markup () {
             GLib.ParamSpecUInt? pspec_uint = prop_spec as GLib.ParamSpecUInt;
 
             if (pspec_uint == null) return null;
@@ -201,10 +199,10 @@ namespace GlassRoom {
         }
     }
 
-    public class PropertyEditFloat: Gtk.SpinButton, GlassRoom.PropertyEdit {
+    public class PropertyEditFloat: GlassRoom.PropertyEditNum, GlassRoom.PropertyEdit {
         private GLib.ParamSpec? _prop_spec;
 
-        public GLib.ParamSpec? prop_spec {
+        public override GLib.ParamSpec? prop_spec {
             get { return _prop_spec; }
             set {
                 GLib.ParamSpecFloat? prop_spec_float = value as GLib.ParamSpecFloat;
@@ -216,17 +214,12 @@ namespace GlassRoom {
             }
         }
 
-        public GLib.Value prop_value {
+        public override GLib.Value prop_value {
             get { return (float) get_value(); }
-            set { value = (double) value.get_float(); }
+            set { this.value = (double) value.get_float(); }
         }
 
-        public override void value_changed () {
-            base.value_changed();
-            notify_property("prop-value");
-        }
-
-        public override string? make_tooltip_markup () {
+        public string? make_tooltip_markup () {
             GLib.ParamSpecFloat? pspec_float = prop_spec as GLib.ParamSpecFloat;
 
             if (pspec_float == null) return null;
@@ -241,10 +234,10 @@ namespace GlassRoom {
         }
     }
 
-    public class PropertyEditDouble: Gtk.SpinButton, GlassRoom.PropertyEdit {
+    public class PropertyEditDouble: GlassRoom.PropertyEditNum, GlassRoom.PropertyEdit {
         private GLib.ParamSpec? _prop_spec;
 
-        public GLib.ParamSpec? prop_spec {
+        public override GLib.ParamSpec? prop_spec {
             get { return _prop_spec; }
             set {
                 GLib.ParamSpecDouble? prop_spec_double = value as GLib.ParamSpecDouble;
@@ -256,17 +249,12 @@ namespace GlassRoom {
             }
         }
 
-        public GLib.Value prop_value {
+        public override GLib.Value prop_value {
             get { return value; }
-            set { value = value.get_double(); }
+            set { this.value = value.get_double(); }
         }
 
-        public override void value_changed () {
-            base.value_changed();
-            notify_property("prop-value");
-        }
-
-        public override string? make_tooltip_markup () {
+        public string? make_tooltip_markup () {
             GLib.ParamSpecDouble? pspec_double = prop_spec as GLib.ParamSpecDouble;
 
             if (pspec_double == null) return null;
