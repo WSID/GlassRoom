@@ -1,4 +1,4 @@
-/* window.vala
+/* srcbinrow.vala
  *
  * Copyright 2019 Wissle
  *
@@ -28,49 +28,31 @@
  */
 
 namespace GlassRoom {
-	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/window.ui")]
-	public class Window : Gtk.ApplicationWindow {
+	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/srcbinrow.ui")]
+	public class SrcBinRow : Gtk.ListBoxRow {
 
-        public Gst.Video.Sink view_sink {get; }
+        public GlassRoom.SrcBin src_bin {get; construct;}
 
-        [GtkChild(name="sources-list-box")]
-        private Gtk.ListBox sources_list_box;
+        [GtkChild]
+        private Gtk.Label label_name;
 
-        [GtkChild(name="content-pane")]
-        private Gtk.Paned content_pane;
+        [GtkChild]
+        private Gtk.Label label_type;
 
-	    private Gtk.Widget view_widget;
+        [GtkChild]
+        private Gtk.Switch switch_active;
 
 	    construct {
-	        _view_sink = Gst.ElementFactory.make ("gtksink", "view-sink") as Gst.Video.Sink;
-	        if (_view_sink == null) {
-	            critical ("gtksink is not available on system.");
-	        }
-
-            else {
-                _view_sink.get ("widget", out view_widget);
-                content_pane.add (view_widget);
-                view_widget.show();
-            }
-
+            src_bin.bind_property ("name", label_name, "label", BindingFlags.SYNC_CREATE);
+            src_bin.bind_property ("source_factory_name", label_type, "label", BindingFlags.SYNC_CREATE);
+            switch_active.state_set.connect ((state) => {
+                src_bin.set_state (state ? Gst.State.PLAYING : Gst.State.READY);
+                return state;
+            });
 	    }
 
-		public Window (Gtk.Application app) {
-			Object (application: app);
-            GlassRoom.Application ga = (GlassRoom.Application) app;
-            sources_list_box.bind_model (ga.sources, make_row_for_sources_list_box);
-		}
-
-        [GtkCallback]
-		private void on_sources_add_clicked () {
-            GlassRoom.Application ga = (GlassRoom.Application) application;
-            ga.add_source();
-		}
-
-		private Gtk.Widget make_row_for_sources_list_box (Object object) {
-            GlassRoom.SrcBin src_bin = (GlassRoom.SrcBin) object;
-
-            return new SrcBinRow (src_bin);
-		}
+        public SrcBinRow (GlassRoom.SrcBin src_bin) {
+            Object (src_bin: src_bin);
+        }
 	}
 }

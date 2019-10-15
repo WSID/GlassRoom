@@ -29,15 +29,17 @@
 
 namespace GlassRoom {
     public class Application: Gtk.Application {
+        private GLib.ListStore _sources;
 
         public Gst.Pipeline pipeline {get; }
+        public GLib.ListModel sources {get { return _sources; } }
 
-        private Gst.Element source;
         private Gst.Element sink;
 
         construct {
             add_option_group (Gst.init_get_option_group());
 
+            _sources = new GLib.ListStore (typeof (GlassRoom.SrcBin));
         }
 
         public Application () {
@@ -54,9 +56,27 @@ namespace GlassRoom {
             //       1. Assemble pipeline at right position.
             //       2. Replace test elements into right elements, when ready.
 
-            source = new GlassRoom.SrcBin ("source", "videotestsrc");
+            // Variables in this section is bound to closure.
+            {
+                Gst.Element? source = null;
+                _sources.items_changed.connect ((model, position, n_remove, n_add) => {
+                    // Only picks first source in the model.
 
-            _pipeline.add (source);
+                    // Remove currently connected source.
+                    if (source != null) {
+                        source.set_state (Gst.State.NULL);
+                        source.unlink (sink);
+                        _pipeline.remove (source);
+                    }
+
+                    source = (Gst.Element) model.get_item(0);
+                    if (source != null) {
+                        _pipeline.add (source);
+                        source.link (sink);
+                        source.sync_state_with_parent();
+                    }
+                });
+            }
         }
 
         public override void activate () {
@@ -68,13 +88,16 @@ namespace GlassRoom {
 
                 sink = grwindow.view_sink;
                 _pipeline.add (sink);
-                source.link (sink);
 
                 window = grwindow;
             }
             window.present ();
 
             _pipeline.set_state (Gst.State.PLAYING);
+        }
+
+        public void add_source () {
+            _sources.append (new GlassRoom.SrcBin ("A Source", "videotestsrc"));
         }
     }
 }
