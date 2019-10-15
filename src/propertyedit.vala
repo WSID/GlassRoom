@@ -140,6 +140,16 @@ namespace GlassRoom {
             return @"<b>$value_type</b>\n<b>Default</b>: $def_value\n$blurb";
         }
 
+        public bool holds_default_value () {
+            return property.value_defaults (value);
+        }
+
+        public void reset () {
+            Value def_value = Value (prop_type);
+            property.set_value_default (ref def_value);
+            value = def_value;
+        }
+
         protected bool binding_prop_to_edit (Binding binding, Value from, ref Value to) {
             to.set_boxed (&from);
             return true;

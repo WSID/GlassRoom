@@ -117,6 +117,12 @@ namespace GlassRoom {
                 attach (label, 0, row);
                 attach (edit_widget, 1, row);
                 attach (reset_button, 2, row);
+
+                // Add signal handlers
+                reset_button.clicked.connect (() => editor.reset());
+                editor.notify["value"].connect ((s, p) => {
+                    reset_button.sensitive = ! ((PropertyEdit)s).holds_default_value();
+                });
             }
             else {
                 debug ("Unsupported param spec: %s (%s)",
