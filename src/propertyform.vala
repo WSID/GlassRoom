@@ -31,6 +31,8 @@ namespace GlassRoom {
         private Type _object_type;
         private Object? _object;
 
+        private HashTable<string, PropertyEdit> table_prop_edit = new HashTable<string, PropertyEdit>(str_hash, str_equal);
+
         public Type object_type {
             get {
                 return _object_type;
@@ -65,8 +67,13 @@ namespace GlassRoom {
             }
             set {
                 _object = value;
+
+                if (_object != null) table_prop_edit.foreach ((prop, editor) => {
+                    editor.object = value;
+                });
             }
         }
+
 
         /**
          * Sets both of object_type and object at once.
@@ -77,11 +84,17 @@ namespace GlassRoom {
         }
 
         private bool attach_edit_row (ParamSpec pspec, int row) {
+            // First, filter out non-editable property.
+            if (!(GLib.ParamFlags.READWRITE in pspec.flags)) return false;
+
             // [Label] [Editor] [Reset Button]
             GlassRoom.PropertyEdit? editor = GlassRoom.PropertyEdit.get_for_pspec(pspec);
 
             if (editor != null) {
+                table_prop_edit[pspec.name] = editor;
+
                 Gtk.Label label = new Gtk.Label (pspec.get_nick());
+                Gtk.Widget edit_widget = editor.widget;
                 Gtk.Button reset_button = new Gtk.Button.from_icon_name("edit-clear-all-symbolic");
 
                 Value default_value = pspec.get_default_value();
@@ -90,29 +103,24 @@ namespace GlassRoom {
                 string tooltip_reset = @"<b>Default</b>\n$(default_value.strdup_contents())";
 
                 label.tooltip_markup = tooltip_pspec;
-                editor.tooltip_markup = tooltip_pspec;
+                edit_widget.tooltip_markup = tooltip_pspec;
                 reset_button.tooltip_markup = tooltip_reset;
 
                 label.visible = true;
-                editor.visible = true;
+                edit_widget.visible = true;
                 reset_button.visible = true;
 
                 label.xalign = 0.0f;
-                editor.hexpand = true;
-
-                editor.prop_value = default_value;
+                edit_widget.hexpand = true;
 
                 // Attach UI
                 attach (label, 0, row);
-                attach (editor, 1, row);
+                attach (edit_widget, 1, row);
                 attach (reset_button, 2, row);
-
-                //TODO: connect signals, and bind editor:value <-> object's own property.
-                //ulong editor_notify_handle;
-                //ulong object_notify_hanlde;
-                //editor_notify_handle = editor.notify["value"].connect (() => {
-                //    GLib.SignalHandler.block ()
-                //});
+            }
+            else {
+                debug ("Unsupported param spec: %s (%s)",
+                pspec.get_name(), pspec.value_type.name());
             }
 
             return (editor != null);
