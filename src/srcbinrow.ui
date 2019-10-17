@@ -2,6 +2,21 @@
 <!-- Generated with glade 3.22.0 -->
 <interface>
   <requires lib="gtk+" version="3.22"/>
+
+  <menu id="context-menu">
+
+    <item>
+      <attribute name="label" translatable="yes">Edit</attribute>
+      <attribute name="icon">document-edit-symbolic</attribute>
+      <attribute name="action">row.edit</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Delete</attribute>
+      <attribute name="icon">edit-delete-symbolic</attribute>
+      <attribute name="action">row.delete</attribute>
+    </item>
+  </menu>
+
   <template class="GlassRoomSrcBinRow" parent="GtkListBoxRow">
     <property name="width_request">100</property>
     <property name="visible">True</property>
@@ -48,12 +63,12 @@
           </packing>
         </child>
         <child>
-          <object class="GtkButton">
+          <object class="GtkMenuButton">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
             <property name="relief">none</property>
-            <signal name="clicked" handler="edit_sources"/>
+            <property name="menu-model">context-menu</property>
             <child>
               <object class="GtkImage">
                 <property name="visible">True</property>

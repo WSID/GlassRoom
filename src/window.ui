@@ -105,7 +105,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <signal name="clicked" handler="on_sources_add_clicked" swapped="no"/>
+                        <property name="action_name">win.sources-add</property>
                         <child>
                           <object class="GtkImage">
                             <property name="visible">True</property>
@@ -170,7 +170,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <signal name="clicked" handler="edit_delete_sources" swapped="no"/>
+                        <property name="action_name">win.sources-edit-delete</property>
                         <style>
                           <class name="destructive-action"/>
                         </style>
@@ -202,7 +202,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <signal name="clicked" handler="on_sources_back_clicked" swapped="no"/>
+                    <property name="action_name">win.sources-back</property>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>

@@ -50,6 +50,11 @@ namespace GlassRoom {
         public override void startup () {
             base.startup();
 
+            GLib.SimpleAction action_remove_source = new GLib.SimpleAction ("remove-source", VariantType.STRING);
+            action_remove_source.activate.connect (activate_remove_source);
+            add_action (action_remove_source);
+
+
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
 
             // TODO: This is priliminary connection.
@@ -97,23 +102,70 @@ namespace GlassRoom {
         }
 
         public GlassRoom.SrcBin add_source () {
-            GlassRoom.SrcBin src_bin = new GlassRoom.SrcBin ("A Source", "videotestsrc");
+            int index = 1;
+            string name = "Source #%d".printf (index);
+
+            while (get_source_by_name(name) != null) {
+                index++;
+                name = "Source #%d".printf (index);
+            }
+
+            GlassRoom.SrcBin src_bin = new GlassRoom.SrcBin (name, "videotestsrc");
             _sources.append (src_bin);
             return src_bin;
         }
 
         public bool remove_source (GlassRoom.SrcBin src_bin) {
             uint i = 0;
-            Object? item = null;
+            GlassRoom.SrcBin? item = (GlassRoom.SrcBin?)_sources.get_item (i);
 
-            do {
-                item = _sources.get_item (i);
+            while (item != null) {
+                if (item == src_bin) {
+                    _sources.remove (i);
+                    return true;
+                }
+
                 i++;
+                item = (GlassRoom.SrcBin?)_sources.get_item (i);
             }
-            while (item != src_bin);
+            return false;
+        }
 
-            if (item != null) _sources.remove (i - 1);
-            return (item != null);
+        public bool remove_source_by_name (string src_bin) {
+            uint i = 0;
+            GlassRoom.SrcBin? item = (GlassRoom.SrcBin?)_sources.get_item (i);
+
+            while (item != null) {
+                if (item.get_name () == src_bin) {
+                    _sources.remove (i - 1);
+                    return true;
+                }
+
+                i++;
+                item = (GlassRoom.SrcBin?)_sources.get_item (i);
+            }
+            return false;
+        }
+
+        public GlassRoom.SrcBin? get_source_by_name (string src_bin) {
+            uint i = 0;
+            GlassRoom.SrcBin? item = (GlassRoom.SrcBin?)_sources.get_item (i);
+
+            while (item != null) {
+                if (item.get_name () == src_bin) {
+                    return item;
+                }
+
+                i++;
+                item = (GlassRoom.SrcBin?)_sources.get_item (i);
+            }
+            return null;
+        }
+
+
+        private void activate_remove_source (Variant? variant) {
+            string src_bin = (string) variant;
+            remove_source_by_name (src_bin);
         }
     }
 }

@@ -49,17 +49,35 @@ namespace GlassRoom {
                 src_bin.set_state (state ? Gst.State.PLAYING : Gst.State.NULL);
                 return state;
             });
+
+            GLib.SimpleActionGroup action_group = new GLib.SimpleActionGroup();
+
+            GLib.SimpleAction action_edit = new GLib.SimpleAction ("edit", null);
+            action_edit.activate.connect (activate_edit);
+
+            GLib.SimpleAction action_delete = new GLib.SimpleAction ("delete", null);
+            action_delete.activate.connect (activate_delete);
+
+            action_group.add_action (action_edit);
+            action_group.add_action (action_delete);
+
+            insert_action_group ("row", action_group);
 	    }
 
         public SrcBinRow (GlassRoom.SrcBin src_bin) {
             Object (src_bin: src_bin);
         }
 
-        [GtkCallback]
-        private void edit_sources () {
+        private void activate_edit (Variant? param) {
             GlassRoom.Window? aw = get_toplevel() as GlassRoom.Window;
 
-            aw.edit_sources (src_bin);
+            if (aw != null) aw.edit_sources (src_bin);
+        }
+
+        private void activate_delete (Variant? param) {
+            GlassRoom.Application? ap = GLib.Application.get_default() as GlassRoom.Application;
+
+            if (ap != null) ap.remove_source (src_bin);
         }
 	}
 }

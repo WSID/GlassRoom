@@ -63,6 +63,20 @@ namespace GlassRoom {
         private Gtk.Box sources_edit_header_box;
 
 	    construct {
+            GLib.SimpleAction action_sources_back = new GLib.SimpleAction ("sources-back", null);
+            action_sources_back.activate.connect (activate_sources_back);
+
+            GLib.SimpleAction action_sources_add = new GLib.SimpleAction ("sources-add", null);
+            action_sources_add.activate.connect (activate_sources_add);
+
+            GLib.SimpleAction action_sources_edit_delete = new GLib.SimpleAction ("sources-edit-delete", null);
+            action_sources_edit_delete.activate.connect (activate_sources_edit_delete);
+
+            add_action(action_sources_back);
+            add_action(action_sources_add);
+            add_action(action_sources_edit_delete);
+
+
 	        _view_sink = Gst.ElementFactory.make ("gtksink", "view-sink") as Gst.Video.Sink;
 	        if (_view_sink == null) {
 	            critical ("gtksink is not available on system.");
@@ -82,24 +96,14 @@ namespace GlassRoom {
             sources_list_box.bind_model (ga.sources, make_row_for_sources_list_box);
 		}
 
-        [GtkCallback]
-		private void on_sources_add_clicked () {
-            GlassRoom.Application ga = (GlassRoom.Application) application;
-            edit_sources (ga.add_source());
-		}
-
-		[GtkCallback]
-		private void on_sources_back_clicked () {
-		    back_sources ();
-		}
-
 		private Gtk.Widget make_row_for_sources_list_box (Object object) {
             GlassRoom.SrcBin src_bin = (GlassRoom.SrcBin) object;
 
             return new SrcBinRow (src_bin);
 		}
 
-		private void back_sources () {
+
+		public void back_sources () {
             sources_edit.src_bin = null;
 
             sources_page_stack.visible_child = sources_list_box;
@@ -115,13 +119,25 @@ namespace GlassRoom {
             sources_back_reveal.reveal_child = true;
 		}
 
-        [GtkCallback]
-		private void edit_delete_sources () {
+
+
+		private void activate_sources_back (Variant? parameter) {
+		    back_sources();
+		}
+
+		private void activate_sources_add (Variant? parameter) {
+            GlassRoom.Application ga = (GlassRoom.Application) application;
+            edit_sources (ga.add_source());
+		}
+
+	    private void activate_sources_edit_delete (Variant? parameter) {
 		    GlassRoom.SrcBin subject = sources_edit.src_bin;
 		    back_sources();
 
+		    sources_edit.src_bin = null;
+
             GlassRoom.Application ga = (GlassRoom.Application) application;
             ga.remove_source (subject);
-		}
+	    }
 	}
 }
