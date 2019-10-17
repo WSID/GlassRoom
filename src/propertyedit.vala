@@ -115,7 +115,7 @@ namespace GlassRoom {
 
                 _object = value;
 
-                bool suitable = object_is_suitable (_object);
+                bool suitable = (_object != null) && object_is_suitable (_object);
 
                 if (suitable) binding = bind_object (_object);
                 widget.sensitive = suitable;

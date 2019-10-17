@@ -10,7 +10,8 @@
       <object class="GtkPaned" id="content-pane">
         <property name="visible">True</property>
         <property name="can_focus">True</property>
-        <property name="position">300</property>
+        <property name="position">450</property>
+        <property name="position_set">True</property>
         <child>
           <object class="GtkScrolledWindow" id="sources-scrollpane">
             <property name="visible">True</property>
@@ -22,9 +23,32 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkListBox" id="sources-list-box">
+                  <object class="GtkStack" id="sources-page-stack">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="hhomogeneous">False</property>
+                    <property name="vhomogeneous">False</property>
+                    <property name="transition_type">slide-left-right</property>
+                    <child>
+                      <object class="GtkListBox" id="sources-list-box">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                      </object>
+                      <packing>
+                        <property name="name">src-bin-list</property>
+                        <property name="title" translatable="yes">Sources List</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GlassRoomSrcBinEdit" id="sources-edit">
+                        <property name="visible">True</property>
+                      </object>
+                      <packing>
+                        <property name="name">src-bin-edit</property>
+                        <property name="title" translatable="yes">Source Edit</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -44,43 +68,151 @@
       <object class="GtkPaned" id="headerbar-pane">
         <property name="visible">True</property>
         <property name="can_focus">True</property>
-        <property name="position" bind-source="content-pane" bind-property="position" bind-flags="bidirectional|sync-create">0</property>
+        <property name="position" bind-source="content-pane" bind-property="position" bind-flags="bidirectional|sync-create">450</property>
+        <property name="position_set">True</property>
         <child>
           <object class="GtkHeaderBar" id="sources-headerbar">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="title" translatable="yes">Glass Room</property>
-            <child>
-              <object class="GtkButton" id="sources-button-add">
+            <child type="title">
+              <object class="GtkStack" id="sources-header-stack">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <signal name="clicked" handler="on_sources_add_clicked" swapped="no"/>
+                <property name="can_focus">False</property>
+                <property name="hexpand">True</property>
+                <property name="transition_type">slide-left-right</property>
                 <child>
-                  <object class="GtkImage">
+                  <object class="GtkBox" id="sources-list-header-box">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="icon_name">list-add-symbolic</property>
+                    <property name="spacing">6</property>
+                    <child type="center">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Glass Room</property>
+                        <style>
+                          <class name="title"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="sources-button-add">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <signal name="clicked" handler="on_sources_add_clicked" swapped="no"/>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="icon_name">list-add-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="sources-button-select-mode">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="icon_name">object-select-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
+                  <packing>
+                    <property name="name">src-bin-list</property>
+                    <property name="title" translatable="yes">Source List</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox" id="sources-edit-header-box">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child type="center">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Editing Source</property>
+                        <style>
+                          <class name="title"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton">
+                        <property name="label" translatable="yes">Delete</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <signal name="clicked" handler="edit_delete_sources" swapped="no"/>
+                        <style>
+                          <class name="destructive-action"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack_type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">src-bin-edit</property>
+                    <property name="title" translatable="yes">src-bin-edit</property>
+                    <property name="position">1</property>
+                  </packing>
                 </child>
               </object>
             </child>
             <child>
-              <object class="GtkToggleButton" id="sources-button-select-mode">
+              <object class="GtkRevealer" id="sources-back-reveal">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
+                <property name="can_focus">False</property>
+                <property name="transition_type">slide-left</property>
+                <property name="transition_duration">200</property>
                 <child>
-                  <object class="GtkImage">
+                  <object class="GtkButton">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="icon_name">object-select-symbolic</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <signal name="clicked" handler="on_sources_back_clicked" swapped="no"/>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="icon_name">go-previous-symbolic</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
-              <packing>
-                <property name="position">1</property>
-              </packing>
             </child>
           </object>
           <packing>

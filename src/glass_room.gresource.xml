@@ -3,5 +3,6 @@
   <gresource prefix="/standalone/glassroom/GlassRoom">
     <file>window.ui</file>
     <file>srcbinrow.ui</file>
+    <file>srcbinedit.ui</file>
   </gresource>
 </gresources>

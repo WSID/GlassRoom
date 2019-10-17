@@ -5,7 +5,8 @@ glass_room_sources = [
   'propertyedit.vala',
   'propertyform.vala',
   'srcbin.vala',
-  'srcbinrow.vala'
+  'srcbinrow.vala',
+  'srcbinedit.vala'
 ]
 
 glass_room_deps = [

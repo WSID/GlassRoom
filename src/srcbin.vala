@@ -40,7 +40,7 @@ namespace GlassRoom {
 
         private string? _source_factory_name;
 
-        private Gst.Base.Src? source;
+        //private Gst.Base.Src? _source;
         private Gst.GhostPad pad;
 
         public string? source_factory_name {
@@ -51,11 +51,11 @@ namespace GlassRoom {
                 if (_source_factory_name == value)
                     return;
 
-                if (source != null) {
-                    source.set_state(Gst.State.NULL);
+                if (_source != null) {
+                    _source.set_state(Gst.State.NULL);
                     pad.set_target (null);
-                    remove (source);
-                    source = null;
+                    remove (_source);
+                    _source = null;
                 }
 
                 _source_factory_name = value;
@@ -66,19 +66,26 @@ namespace GlassRoom {
 
                 if (element == null) {
                     warning ("Cannot make source for factory \"%s\"", _source_factory_name);
+                    notify_property ("source");
                     return;
                 }
 
-                source = element as Gst.Base.Src;
-                if (source == null) {
+                _source = element as Gst.Base.Src;
+                if (_source == null) {
                     warning ("\"%s\" is not source", _source_factory_name);
+                    notify_property ("source");
                     return;
                 }
 
-                add (source);
-                pad.set_target (source.get_static_pad ("src"));
+                add (_source);
+                pad.set_target (_source.get_static_pad ("src"));
+                _source.sync_state_with_parent();
+                notify_property ("source");
+
             }
         }
+
+        public Gst.Base.Src? source { get; }
 
         construct {
             pad = new Gst.GhostPad.no_target ("src", Gst.PadDirection.SRC);

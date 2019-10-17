@@ -96,8 +96,24 @@ namespace GlassRoom {
             _pipeline.set_state (Gst.State.PLAYING);
         }
 
-        public void add_source () {
-            _sources.append (new GlassRoom.SrcBin ("A Source", "videotestsrc"));
+        public GlassRoom.SrcBin add_source () {
+            GlassRoom.SrcBin src_bin = new GlassRoom.SrcBin ("A Source", "videotestsrc");
+            _sources.append (src_bin);
+            return src_bin;
+        }
+
+        public bool remove_source (GlassRoom.SrcBin src_bin) {
+            uint i = 0;
+            Object? item = null;
+
+            do {
+                item = _sources.get_item (i);
+                i++;
+            }
+            while (item != src_bin);
+
+            if (item != null) _sources.remove (i - 1);
+            return (item != null);
         }
     }
 }

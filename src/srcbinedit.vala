@@ -1,4 +1,4 @@
-/* srcbinrow.vala
+/* srcbinedit.vala
  *
  * Copyright 2019 Wissle
  *
@@ -28,38 +28,52 @@
  */
 
 namespace GlassRoom {
-	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/srcbinrow.ui")]
-	public class SrcBinRow : Gtk.ListBoxRow {
+	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/srcbinedit.ui")]
+	public class SrcBinEdit : Gtk.Box {
 
-        public GlassRoom.SrcBin src_bin {get; construct;}
+        private GlassRoom.SrcBin? _src_bin;
+        private ulong src_bin_notify;
+
+        public GlassRoom.SrcBin? src_bin {
+            get {
+                return _src_bin;
+            }
+            set {
+                if (_src_bin != null) {
+                    _src_bin.disconnect (src_bin_notify);
+                }
+                _src_bin = null;
+
+                if (value != null) {
+                    entry_name.text = value.name;
+                    entry_type.text = value.source_factory_name;
+                    details.set_object_combo (value.source);
+                    src_bin_notify = value.notify["source"].connect ((o, p) => {
+                        details.set_object_combo (((GlassRoom.SrcBin)o).source);
+                    });
+                }
+
+                _src_bin = value;
+            }
+        }
 
         [GtkChild]
-        private Gtk.Label label_name;
+        private Gtk.Entry entry_name;
 
         [GtkChild]
-        private Gtk.Label label_type;
+        private Gtk.Entry entry_type;
 
         [GtkChild]
-        private Gtk.Switch switch_active;
+        private GlassRoom.PropertyForm details;
 
-	    construct {
-            src_bin.bind_property ("name", label_name, "label", BindingFlags.SYNC_CREATE);
-            src_bin.bind_property ("source_factory_name", label_type, "label", BindingFlags.SYNC_CREATE);
-            switch_active.state_set.connect ((state) => {
-                src_bin.set_state (state ? Gst.State.PLAYING : Gst.State.NULL);
-                return state;
-            });
-	    }
-
-        public SrcBinRow (GlassRoom.SrcBin src_bin) {
-            Object (src_bin: src_bin);
+        [GtkCallback]
+        private void on_name_changed (Gtk.Editable editable) {
+            if (_src_bin != null) _src_bin.name = ((Gtk.Entry)editable).text;
         }
 
         [GtkCallback]
-        private void edit_sources () {
-            GlassRoom.Window? aw = get_toplevel() as GlassRoom.Window;
-
-            aw.edit_sources (src_bin);
+        private void on_type_changed (Gtk.Editable editable) {
+            if (_src_bin != null) _src_bin.source_factory_name = ((Gtk.Entry)editable).text;
         }
 	}
 }

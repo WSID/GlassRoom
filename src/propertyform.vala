@@ -68,7 +68,7 @@ namespace GlassRoom {
             set {
                 _object = value;
 
-                if (_object != null) table_prop_edit.foreach ((prop, editor) => {
+                table_prop_edit.foreach ((prop, editor) => {
                     editor.object = value;
                 });
             }
