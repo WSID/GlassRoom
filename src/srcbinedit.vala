@@ -32,7 +32,8 @@ namespace GlassRoom {
 	public class SrcBinEdit : Gtk.Box {
 
         private GlassRoom.SrcBin? _src_bin;
-        private ulong src_bin_notify;
+        private ulong src_bin_source_notify;
+        private GLib.Binding? src_bin_bind_use_buffering;
 
         public GlassRoom.SrcBin? src_bin {
             get {
@@ -40,7 +41,9 @@ namespace GlassRoom {
             }
             set {
                 if (_src_bin != null) {
-                    _src_bin.disconnect (src_bin_notify);
+                    _src_bin.disconnect (src_bin_source_notify);
+                    src_bin_bind_use_buffering.unbind();
+                    src_bin_bind_use_buffering = null;
                 }
                 _src_bin = null;
 
@@ -48,9 +51,13 @@ namespace GlassRoom {
                     entry_name.text = value.name;
                     entry_type.text = value.source_factory_name;
                     details.set_object_combo (value.source);
-                    src_bin_notify = value.notify["source"].connect ((o, p) => {
+                    src_bin_source_notify = value.notify["source"].connect ((o, p) => {
                         details.set_object_combo (((GlassRoom.SrcBin)o).source);
                     });
+
+                    src_bin_bind_use_buffering =
+                    value.bind_property ("use-buffering", buffering_check_button, "active",
+                    GLib.BindingFlags.SYNC_CREATE | GLib.BindingFlags.BIDIRECTIONAL);
                 }
 
                 _src_bin = value;
@@ -66,6 +73,9 @@ namespace GlassRoom {
         [GtkChild]
         private GlassRoom.PropertyForm details;
 
+        [GtkChild]
+        private Gtk.CheckButton buffering_check_button;
+
         [GtkCallback]
         private void on_name_changed (Gtk.Editable editable) {
             if (_src_bin != null) _src_bin.name = ((Gtk.Entry)editable).text;
@@ -75,5 +85,6 @@ namespace GlassRoom {
         private void on_type_changed (Gtk.Editable editable) {
             if (_src_bin != null) _src_bin.source_factory_name = ((Gtk.Entry)editable).text;
         }
+
 	}
 }

@@ -53,7 +53,13 @@ namespace GlassRoom {
 
                 if (_source != null) {
                     _source.set_state(Gst.State.NULL);
-                    pad.set_target (null);
+
+                    if (_queue != null) {
+                        _source.unlink (_queue);
+                    }
+                    else {
+                        pad.set_target (null);
+                    }
                     remove (_source);
                     _source = null;
                 }
@@ -78,14 +84,67 @@ namespace GlassRoom {
                 }
 
                 add (_source);
-                pad.set_target (_source.get_static_pad ("src"));
+
+                if (_queue != null) {
+                    _source.link (_queue);
+                }
+                else {
+                    pad.set_target (_source.get_static_pad ("src"));
+                }
                 _source.sync_state_with_parent();
                 notify_property ("source");
 
             }
         }
 
+        public bool use_buffering {
+            get {
+                return (_queue != null);
+            }
+
+            set {
+                if ((_queue != null) && (!value)) {
+                    if (_source != null) {
+                        _source.set_state (Gst.State.NULL);
+                        _queue.set_state (Gst.State.NULL);
+                        _source.unlink (_queue);
+
+                        pad.set_target (_source.get_static_pad ("src"));
+                        _source.sync_state_with_parent();
+                    }
+
+                    else {
+                        pad.set_target (null);
+                    }
+                    remove (_queue);
+                    _queue = null;
+                }
+
+                else if ((_queue == null) && (value)) {
+                    _queue = Gst.ElementFactory.make ("queue", "queue");
+                    add (_queue);
+
+                    if (_source != null) {
+                        _source.set_state (Gst.State.NULL);
+                        pad.set_target (_queue.get_static_pad ("src"));
+
+                        _source.link (_queue);
+                        _source.sync_state_with_parent();
+                    }
+                    _queue.sync_state_with_parent();
+                }
+
+                else {
+                    return;
+                }
+
+                notify_property ("queue");
+            }
+        }
+
         public Gst.Base.Src? source { get; }
+
+        public Gst.Element? queue { get; }
 
         construct {
             pad = new Gst.GhostPad.no_target ("src", Gst.PadDirection.SRC);
