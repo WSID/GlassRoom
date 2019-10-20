@@ -34,7 +34,19 @@ namespace GlassRoom {
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
-        private Gst.Element sink;
+        private Gst.Element tee;
+        private Gst.Element encode_bin;
+        private Gst.Element file_sink;
+        private Gst.Element view_queue;
+        private Gst.Element view_sink;
+
+        // Overall Pipeline
+
+        //                                            --> queue --> gtksink (preview)
+        //                                           |
+        // [sources: GlassRoom.SrcBin 0..] --> Tee -----> encodebin --> filesink
+
+
 
         construct {
             add_option_group (Gst.init_get_option_group());
@@ -57,12 +69,36 @@ namespace GlassRoom {
 
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
 
+            tee = Gst.ElementFactory.make ("tee", "tee");
+            encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
+            file_sink = Gst.ElementFactory.make ("filesink", "file-sink");
+            view_queue = Gst.ElementFactory.make ("queue", "view-queue");
+
+            Gst.PbUtils.EncodingContainerProfile profile = new Gst.PbUtils.EncodingContainerProfile (
+                "Ogg audio/video",
+                "Standard OGG/THEORA/VORBIS",
+                Gst.Caps.from_string ("application/ogg"), null);
+
+            profile.add_profile (new Gst.PbUtils.EncodingVideoProfile (
+                Gst.Caps.from_string ("video/x-theora"), null, null, 0));
+
+
+            encode_bin.set ("profile", profile);
+            file_sink.set ("location", "myvid.ogg");
+            _pipeline.add_many (tee, view_queue, encode_bin, file_sink);
+            encode_bin.link (file_sink);
+            tee.get_request_pad ("src_%u").link (encode_bin.get_request_pad ("video_%u"));
+            tee.get_request_pad ("src_%u").link (view_queue.get_static_pad ("sink"));
+
+            tee.set_state (Gst.State.PLAYING);
+            view_queue.set_state (Gst.State.PLAYING);
+
             // TODO: This is priliminary connection.
             //       1. Assemble pipeline at right position.
             //       2. Replace test elements into right elements, when ready.
 
-            // Variables in this section is bound to closure.
             {
+                // Variables in this section is bound to closure.
                 Gst.Element? source = null;
                 _sources.items_changed.connect ((model, position, n_remove, n_add) => {
                     // Only picks first source in the model.
@@ -70,15 +106,16 @@ namespace GlassRoom {
                     // Remove currently connected source.
                     if (source != null) {
                         source.set_state (Gst.State.NULL);
-                        source.unlink (sink);
+                        source.unlink (tee);
                         _pipeline.remove (source);
                     }
 
                     source = (Gst.Element) model.get_item(0);
                     if (source != null) {
                         _pipeline.add (source);
-                        source.link (sink);
+                        source.link (tee);
                         source.sync_state_with_parent();
+                        source.set_state (Gst.State.PLAYING);
                     }
                 });
             }
@@ -91,13 +128,13 @@ namespace GlassRoom {
             if (window == null) {
                 var grwindow = new GlassRoom.Window (this);
 
-                sink = grwindow.view_sink;
-                _pipeline.add (sink);
+                view_sink = grwindow.view_sink;
+                _pipeline.add (view_sink);
+                view_queue.link (view_sink);
 
                 window = grwindow;
             }
             window.present ();
-
             _pipeline.set_state (Gst.State.PLAYING);
         }
 
