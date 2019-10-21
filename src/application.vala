@@ -31,14 +31,22 @@ namespace GlassRoom {
     public class Application: Gtk.Application {
         private GLib.ListStore _sources;
 
+        private bool _recording = false;
+        private bool _pausing = false;
+
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
         private Gst.Element tee;
         private Gst.Element encode_bin;
+        private Gst.Pad? tee_encode_bin_src;
+        private Gst.Pad? tee_encode_bin_sink;
+
         private Gst.Element file_sink;
         private Gst.Element view_queue;
         private Gst.Element view_sink;
+
+        private delegate void SimpleCallback ();
 
         // Overall Pipeline
 
@@ -46,6 +54,89 @@ namespace GlassRoom {
         //                                           |
         // [sources: GlassRoom.SrcBin 0..] --> Tee -----> encodebin --> filesink
 
+        public bool recording {
+            get {
+                return _recording;
+            }
+            set {
+                // Stop Recording.
+                if ((_recording) && (!value)) {
+                    if (_pausing) {
+                        _pausing = false;
+                        notify_property ("pausing");
+                    }
+
+                    unlink_recorder (() => {
+                        _pipeline.get_bus().add_watch (0, (bus,message) => {
+
+                            if ((message.src == file_sink) && (message.type == Gst.MessageType.STATE_CHANGED)) {
+
+                                encode_bin.set_state (Gst.State.NULL);
+                                file_sink.set_state (Gst.State.NULL);
+                                encode_bin.release_request_pad (tee_encode_bin_sink);
+                                tee_encode_bin_sink = null;
+
+                                encode_bin.unlink (file_sink);
+                                _pipeline.remove (encode_bin);
+                                _pipeline.remove (file_sink);
+
+                                return false;
+                            }
+                            return true;
+                        });
+                    });
+                }
+
+                // Start Recording.
+                else if ((!_recording) && (value)) {
+                    // Add elements.
+                    debug ("Starting Recording");
+                    _pipeline.add (encode_bin);
+                    _pipeline.add (file_sink);
+                    encode_bin.link (file_sink);
+
+                    tee_encode_bin_sink = encode_bin.get_request_pad ("video_%u");
+                    link_recorder ();
+
+                    encode_bin.sync_state_with_parent ();
+                    file_sink.sync_state_with_parent ();
+                }
+
+                _recording = value;
+            }
+        }
+
+
+        private Gst.ClockTime pause_start;
+        private Gst.ClockTime pause_end;
+
+        public bool pausing {
+            get {
+                return _recording && _pausing;
+            }
+            set {
+                if (_recording) {
+                    if ((!_pausing) && (value)) {
+                        unlink_recorder (() => {
+                            pause_start = tee.get_clock().get_time();
+                            file_sink.set_state (Gst.State.PAUSED);
+                        });
+                    }
+
+                    else if ((_pausing) && (!value)) {
+                        pause_end = tee.get_clock().get_time();
+                        Gst.ClockTime pause_duration = pause_end - pause_start;
+                        tee_encode_bin_sink.offset = tee_encode_bin_sink.offset - (int64)pause_duration;
+
+                        link_recorder ();
+
+                        file_sink.sync_state_with_parent ();
+
+                    }
+                    _pausing = value;
+                }
+            }
+        }
 
 
         construct {
@@ -66,14 +157,20 @@ namespace GlassRoom {
             action_remove_source.activate.connect (activate_remove_source);
             add_action (action_remove_source);
 
+            add_action (new GLib.PropertyAction ("record", this, "recording"));
+            add_action (new GLib.PropertyAction ("pause", this, "pausing"));
 
+
+            // Make Elements for pipeline.
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
+            _pipeline.message_forward = true;
 
             tee = Gst.ElementFactory.make ("tee", "tee");
             encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
             file_sink = Gst.ElementFactory.make ("filesink", "file-sink");
             view_queue = Gst.ElementFactory.make ("queue", "view-queue");
 
+            // TEMP: Prepare profile for recording.
             Gst.PbUtils.EncodingContainerProfile profile = new Gst.PbUtils.EncodingContainerProfile (
                 "Ogg audio/video",
                 "Standard OGG/THEORA/VORBIS",
@@ -83,15 +180,15 @@ namespace GlassRoom {
                 Gst.Caps.from_string ("video/x-theora"), null, null, 0));
 
 
+            // Setup element properties.
             encode_bin.set ("profile", profile);
-            file_sink.set ("location", "myvid.ogg");
-            _pipeline.add_many (tee, view_queue, encode_bin, file_sink);
-            encode_bin.link (file_sink);
-            tee.get_request_pad ("src_%u").link (encode_bin.get_request_pad ("video_%u"));
+            file_sink.set ("location", "/home/wissle/myvid.ogg");
+
+            // linking elemets.
+            _pipeline.add_many (tee, view_queue, encode_bin);
+
             tee.get_request_pad ("src_%u").link (view_queue.get_static_pad ("sink"));
 
-            tee.set_state (Gst.State.PLAYING);
-            view_queue.set_state (Gst.State.PLAYING);
 
             // TODO: This is priliminary connection.
             //       1. Assemble pipeline at right position.
@@ -197,6 +294,33 @@ namespace GlassRoom {
                 item = (GlassRoom.SrcBin?)_sources.get_item (i);
             }
             return null;
+        }
+
+        // Pipeline Manipulation.
+
+        private void link_recorder () {
+            tee_encode_bin_src = tee.get_request_pad ("src_%u");
+            tee_encode_bin_src.link (tee_encode_bin_sink);
+        }
+
+
+        private void unlink_recorder (owned SimpleCallback callback) {
+            if (tee_encode_bin_src != null) {
+                tee_encode_bin_src.add_probe (
+                    Gst.PadProbeType.BLOCK_DOWNSTREAM,
+                    (pad, info) => {
+                        pad.unlink (tee_encode_bin_sink);
+                        tee.release_request_pad (pad);
+
+                        callback();
+                        return Gst.PadProbeReturn.REMOVE;
+                    }
+                );
+                tee_encode_bin_src = null;
+            }
+            else {
+                callback();
+            }
         }
 
 
