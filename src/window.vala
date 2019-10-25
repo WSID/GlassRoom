@@ -139,5 +139,17 @@ namespace GlassRoom {
             GlassRoom.Application ga = (GlassRoom.Application) application;
             ga.remove_source (subject);
 	    }
+        [GtkCallback]
+	    private void on_record_as_dialog_response (Gtk.Dialog dialog, int response_id) {
+            dialog.hide ();
+
+            if (response_id == Gtk.ResponseType.OK) {
+                Gtk.FileChooser chooser = (Gtk.FileChooser) dialog;
+                GLib.File file = chooser.get_file();
+
+                GlassRoom.Application ga = (GlassRoom.Application) application;
+                ga.record (file.get_path());
+            }
+	    }
 	}
 }

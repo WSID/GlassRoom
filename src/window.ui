@@ -333,6 +333,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <signal name="clicked" handler="gtk_widget_show" object="view-record-as-dialog" swapped="yes"/>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>
@@ -386,4 +387,29 @@
       </object>
     </child>
   </template>
+  <object class="GtkFileChooserDialog" id="view-record-as-dialog">
+    <property name="can_focus">False</property>
+    <property name="type_hint">dialog</property>
+    <property name="action">save</property>
+    <property name="do_overwrite_confirmation">True</property>
+    <signal name="delete-event" handler="gtk_widget_hide_on_delete"/>
+    <signal name="response" handler="on_record_as_dialog_response"/>
+    <child type="action">
+      <object class="GtkButton" id="view-record-as-dialog-cancel">
+        <property name="visible">True</property>
+        <property name="label">Cancel</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="view-record-as-dialog-ok">
+        <property name="visible">True</property>
+        <property name="can-default">True</property>
+        <property name="label">Ok</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">view-record-as-dialog-cancel</action-widget>
+      <action-widget response="ok" default="true">view-record-as-dialog-ok</action-widget>
+    </action-widgets>
+  </object>
 </interface>

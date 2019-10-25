@@ -296,6 +296,17 @@ namespace GlassRoom {
             return null;
         }
 
+
+        public void record (string? path = null) {
+            if (path == null) {
+                path = "/home/wissle/myvid.ogg";
+            }
+
+            file_sink.set ("location", path);
+            recording = true;
+        }
+
+
         // Pipeline Manipulation.
 
         private void link_recorder () {
