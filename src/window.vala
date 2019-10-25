@@ -31,6 +31,10 @@ namespace GlassRoom {
 	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/window.ui")]
 	public class Window : Gtk.ApplicationWindow {
 
+	    static construct {
+	        typeof (RecordHeaderBox).ensure();
+	    }
+
         public Gst.Video.Sink view_sink {get; }
         [GtkChild(name="content-pane")]
         private Gtk.Paned content_pane;
@@ -61,6 +65,14 @@ namespace GlassRoom {
 
         [GtkChild(name="sources-edit-header-box")]
         private Gtk.Box sources_edit_header_box;
+
+
+        // View section.
+        [GtkChild(name="view-headerbar")]
+        private Gtk.HeaderBar view_headerbar;
+
+        [GtkChild(name="view-header-record-box")]
+        private GlassRoom.RecordHeaderBox view_header_record_box;
 
 	    construct {
             GLib.SimpleAction action_sources_back = new GLib.SimpleAction ("sources-back", null);
@@ -94,6 +106,8 @@ namespace GlassRoom {
 			Object (application: app);
             GlassRoom.Application ga = (GlassRoom.Application) app;
             sources_list_box.bind_model (ga.sources, make_row_for_sources_list_box);
+
+            view_header_record_box.application = ga;
 		}
 
 		private Gtk.Widget make_row_for_sources_list_box (Object object) {
@@ -139,16 +153,16 @@ namespace GlassRoom {
             GlassRoom.Application ga = (GlassRoom.Application) application;
             ga.remove_source (subject);
 	    }
-        [GtkCallback]
-	    private void on_record_as_dialog_response (Gtk.Dialog dialog, int response_id) {
-            dialog.hide ();
 
-            if (response_id == Gtk.ResponseType.OK) {
-                Gtk.FileChooser chooser = (Gtk.FileChooser) dialog;
-                GLib.File file = chooser.get_file();
+	    private void on_application_state_change (Object obj, GLib.ParamSpec pspec) {
+	        GlassRoom.Application ga = (GlassRoom.Application) obj;
 
-                GlassRoom.Application ga = (GlassRoom.Application) application;
-                ga.record (file.get_path());
+            // If recording, then title should be file name.
+            // Subtitle should be
+            if (ga.recording) {
+                if (ga.pausing) {
+
+                }
             }
 	    }
 	}

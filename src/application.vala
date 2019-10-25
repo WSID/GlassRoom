@@ -100,6 +100,8 @@ namespace GlassRoom {
 
                     encode_bin.sync_state_with_parent ();
                     file_sink.sync_state_with_parent ();
+
+                    recording_duration_acc = 0;
                 }
 
                 _recording = value;
@@ -135,6 +137,24 @@ namespace GlassRoom {
                     }
                     _pausing = value;
                 }
+            }
+        }
+
+        private Gst.ClockTime recording_duration_acc;
+        private Gst.ClockTime record_resume_time;
+        public Gst.ClockTime recording_duration {
+            get {
+                if (! recording) return 0;
+
+                Gst.ClockTime recording_duration_current = 0;
+
+                if (! pausing) {
+                    recording_duration_current =
+                        _pipeline.get_clock().get_time() -
+                        record_resume_time;
+                }
+
+                return recording_duration_acc + recording_duration_current;
             }
         }
 
@@ -312,6 +332,8 @@ namespace GlassRoom {
         private void link_recorder () {
             tee_encode_bin_src = tee.get_request_pad ("src_%u");
             tee_encode_bin_src.link (tee_encode_bin_sink);
+
+            record_resume_time = _pipeline.get_clock().get_time();
         }
 
 
@@ -322,6 +344,9 @@ namespace GlassRoom {
                     (pad, info) => {
                         pad.unlink (tee_encode_bin_sink);
                         tee.release_request_pad (pad);
+
+                        recording_duration_acc +=
+                            _pipeline.get_clock().get_time() - record_resume_time;
 
                         callback();
                         return Gst.PadProbeReturn.REMOVE;
