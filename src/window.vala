@@ -31,6 +31,11 @@ namespace GlassRoom {
 	[GtkTemplate (ui = "/standalone/glassroom/GlassRoom/window.ui")]
 	public class Window : Gtk.ApplicationWindow {
 
+	    static construct {
+	        typeof (RecordHeaderBox).ensure();
+	        typeof (RecordOptionView).ensure();
+	    }
+
         public Gst.Video.Sink view_sink {get; }
         [GtkChild(name="content-pane")]
         private Gtk.Paned content_pane;
@@ -62,6 +67,23 @@ namespace GlassRoom {
         [GtkChild(name="sources-edit-header-box")]
         private Gtk.Box sources_edit_header_box;
 
+
+        // View section.
+        [GtkChild(name="view-page-stack")]
+        private Gtk.Stack view_page_stack;
+
+        [GtkChild(name="view-headerbar")]
+        private Gtk.HeaderBar view_headerbar;
+
+        [GtkChild(name="view-back-reveal")]
+        private Gtk.Revealer view_back_reveal;
+
+        [GtkChild(name="view-header-record-box")]
+        private GlassRoom.RecordHeaderBox view_header_record_box;
+
+        [GtkChild(name="view-record-option-view")]
+        private GlassRoom.RecordOptionView view_record_option_view;
+
 	    construct {
             GLib.SimpleAction action_sources_back = new GLib.SimpleAction ("sources-back", null);
             action_sources_back.activate.connect (activate_sources_back);
@@ -72,9 +94,17 @@ namespace GlassRoom {
             GLib.SimpleAction action_sources_edit_delete = new GLib.SimpleAction ("sources-edit-delete", null);
             action_sources_edit_delete.activate.connect (activate_sources_edit_delete);
 
+            GLib.SimpleAction action_view_back = new GLib.SimpleAction ("view-back", null);
+            action_view_back.activate.connect (activate_view_back);
+
+            GLib.SimpleAction action_view_edit_record_option = new GLib.SimpleAction ("view-edit-record-option", null);
+            action_view_edit_record_option.activate.connect (activate_edit_record_option);
+
             add_action(action_sources_back);
             add_action(action_sources_add);
             add_action(action_sources_edit_delete);
+            add_action(action_view_back);
+            add_action(action_view_edit_record_option);
 
 
 	        _view_sink = Gst.ElementFactory.make ("gtksink", "view-sink") as Gst.Video.Sink;
@@ -84,16 +114,20 @@ namespace GlassRoom {
 
             else {
                 _view_sink.get ("widget", out view_widget);
-                content_pane.add (view_widget);
+                view_page_stack.add_named (view_widget, "preview");
                 view_widget.show();
+                view_page_stack.child_set (view_widget, "position", 0);
+                view_page_stack.visible_child = view_widget;
             }
-
 	    }
 
 		public Window (Gtk.Application app) {
 			Object (application: app);
             GlassRoom.Application ga = (GlassRoom.Application) app;
             sources_list_box.bind_model (ga.sources, make_row_for_sources_list_box);
+
+            view_header_record_box.application = ga;
+            view_record_option_view.application = ga;
 		}
 
 		private Gtk.Widget make_row_for_sources_list_box (Object object) {
@@ -120,6 +154,17 @@ namespace GlassRoom {
 		}
 
 
+		public void back_view () {
+		    view_page_stack.visible_child = view_widget;
+		    view_back_reveal.reveal_child = false;
+		}
+
+		public void edit_record_option () {
+		    view_page_stack.visible_child = view_record_option_view;
+		    view_back_reveal.reveal_child = true;
+		}
+
+
 
 		private void activate_sources_back (Variant? parameter) {
 		    back_sources();
@@ -138,6 +183,26 @@ namespace GlassRoom {
 
             GlassRoom.Application ga = (GlassRoom.Application) application;
             ga.remove_source (subject);
+	    }
+
+	    private void activate_view_back (Variant? parameter) {
+	        back_view ();
+	    }
+
+	    private void activate_edit_record_option (Variant? parameter) {
+	        edit_record_option ();
+	    }
+
+	    private void on_application_state_change (Object obj, GLib.ParamSpec pspec) {
+	        GlassRoom.Application ga = (GlassRoom.Application) obj;
+
+            // If recording, then title should be file name.
+            // Subtitle should be
+            if (ga.recording) {
+                if (ga.pausing) {
+
+                }
+            }
 	    }
 	}
 }

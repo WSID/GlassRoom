@@ -4,5 +4,7 @@
     <file>window.ui</file>
     <file>srcbinrow.ui</file>
     <file>srcbinedit.ui</file>
+    <file>recordheaderbox.ui</file>
+    <file>recordoptionview.ui</file>
   </gresource>
 </gresources>

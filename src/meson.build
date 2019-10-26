@@ -6,14 +6,17 @@ glass_room_sources = [
   'propertyform.vala',
   'srcbin.vala',
   'srcbinrow.vala',
-  'srcbinedit.vala'
+  'srcbinedit.vala',
+  'recordheaderbox.vala',
+  'recordoptionview.vala'
 ]
 
 glass_room_deps = [
   dependency('gio-2.0', version: '>= 2.50'),
   dependency('gtk+-3.0', version: '>= 3.22'),
   dependency('gstreamer-1.0'),
-  dependency('gstreamer-video-1.0')
+  dependency('gstreamer-video-1.0'),
+  dependency('gstreamer-pbutils-1.0')
 ]
 
 gnome = import('gnome')
