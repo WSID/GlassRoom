@@ -128,7 +128,7 @@ namespace GlassRoom {
                 Gtk.FileChooser chooser = (Gtk.FileChooser) dialog;
                 GLib.File file = chooser.get_file();
 
-                application.record (file.get_path());
+                application.start_record (file.get_path());
             }
 	    }
     }

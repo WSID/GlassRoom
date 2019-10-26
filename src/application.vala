@@ -54,57 +54,18 @@ namespace GlassRoom {
         //                                           |
         // [sources: GlassRoom.SrcBin 0..] --> Tee -----> encodebin --> filesink
 
+        /**
+         * Whether this is recording or not.
+         *
+         * Setting this property starts, or stops recording.
+         */
         public bool recording {
             get {
                 return _recording;
             }
             set {
-                // Stop Recording.
-                if ((_recording) && (!value)) {
-                    if (_pausing) {
-                        _pausing = false;
-                        notify_property ("pausing");
-                    }
-
-                    unlink_recorder (() => {
-                        _pipeline.get_bus().add_watch (0, (bus,message) => {
-
-                            if ((message.src == file_sink) && (message.type == Gst.MessageType.STATE_CHANGED)) {
-
-                                encode_bin.set_state (Gst.State.NULL);
-                                file_sink.set_state (Gst.State.NULL);
-                                encode_bin.release_request_pad (tee_encode_bin_sink);
-                                tee_encode_bin_sink = null;
-
-                                encode_bin.unlink (file_sink);
-                                _pipeline.remove (encode_bin);
-                                _pipeline.remove (file_sink);
-
-                                return false;
-                            }
-                            return true;
-                        });
-                    });
-                }
-
-                // Start Recording.
-                else if ((!_recording) && (value)) {
-                    // Add elements.
-                    debug ("Starting Recording");
-                    _pipeline.add (encode_bin);
-                    _pipeline.add (file_sink);
-                    encode_bin.link (file_sink);
-
-                    tee_encode_bin_sink = encode_bin.get_request_pad ("video_%u");
-                    link_recorder ();
-
-                    encode_bin.sync_state_with_parent ();
-                    file_sink.sync_state_with_parent ();
-
-                    recording_duration_acc = 0;
-                }
-
-                _recording = value;
+                if ((_recording) && (!value)) stop_record();
+                else if ((!_recording) && (value)) start_record();
             }
         }
 
@@ -112,30 +73,22 @@ namespace GlassRoom {
         private Gst.ClockTime pause_start;
         private Gst.ClockTime pause_end;
 
+        /**
+         * Whether this is pausing the recording or not.
+         *
+         * This is always false, when not recording.
+         *
+         * Setting this property pauses, or unpauses on-going recording.
+         * No effect when not recording.
+         */
         public bool pausing {
             get {
                 return _recording && _pausing;
             }
             set {
                 if (_recording) {
-                    if ((!_pausing) && (value)) {
-                        unlink_recorder (() => {
-                            pause_start = tee.get_clock().get_time();
-                            file_sink.set_state (Gst.State.PAUSED);
-                        });
-                    }
-
-                    else if ((_pausing) && (!value)) {
-                        pause_end = tee.get_clock().get_time();
-                        Gst.ClockTime pause_duration = pause_end - pause_start;
-                        tee_encode_bin_sink.offset = tee_encode_bin_sink.offset - (int64)pause_duration;
-
-                        link_recorder ();
-
-                        file_sink.sync_state_with_parent ();
-
-                    }
-                    _pausing = value;
+                    if ((!_pausing) && (value)) pause_record ();
+                    else if ((_pausing) && (!value)) unpause_record ();
                 }
             }
         }
@@ -317,14 +270,124 @@ namespace GlassRoom {
         }
 
 
-        public void record (string? path = null) {
+        // Public Pipeline manipulation.
+
+        /**
+         * Starts record with given path name.
+         *
+         * @param path Path to file, or null for preset generated name.
+         *
+         * @return Whether this was not recording.
+         */
+        public bool start_record (string? path = null) {
             if (path == null) {
                 path = "/home/wissle/myvid.ogg";
             }
 
             file_sink.set ("location", path);
-            recording = true;
+
+            bool was_not_recording = ! _recording;
+            if (was_not_recording) {
+                // Add elements.
+                _pipeline.add (encode_bin);
+                _pipeline.add (file_sink);
+                encode_bin.link (file_sink);
+
+                tee_encode_bin_sink = encode_bin.get_request_pad ("video_%u");
+                link_recorder ();
+
+                encode_bin.sync_state_with_parent ();
+                file_sink.sync_state_with_parent ();
+
+                recording_duration_acc = 0;
+                _recording = true;
+                notify_property ("recording");
+            }
+
+            return was_not_recording;
         }
+
+        /**
+         * Stops recording.
+         *
+         * @return Whether this was recording.
+         */
+        public bool stop_record () {
+            bool was_recording = recording;
+
+            if (was_recording) {
+                if (_pausing) {
+                    _pausing = false;
+                    notify_property ("pausing");
+                }
+
+                unlink_recorder (() => {
+                    _pipeline.get_bus().add_watch (0, (bus,message) => {
+
+                        if ((message.src == file_sink) && (message.type == Gst.MessageType.STATE_CHANGED)) {
+
+                            encode_bin.set_state (Gst.State.NULL);
+                            file_sink.set_state (Gst.State.NULL);
+                            encode_bin.release_request_pad (tee_encode_bin_sink);
+                            tee_encode_bin_sink = null;
+
+                            encode_bin.unlink (file_sink);
+                            _pipeline.remove (encode_bin);
+                            _pipeline.remove (file_sink);
+
+                            return false;
+                        }
+                        return true;
+                    });
+                });
+
+                _recording = false;
+                notify_property ("recording");
+            }
+
+            return was_recording;
+        }
+
+
+        public bool pause_record () {
+            if (_recording) {
+                bool was_not_pausing = ! _pausing;
+
+                if (was_not_pausing) {
+                    unlink_recorder (() => {
+                        pause_start = tee.get_clock().get_time();
+                        file_sink.set_state (Gst.State.PAUSED);
+                    });
+                    _pausing = true;
+                    notify_property ("pausing");
+                }
+                return was_not_pausing;
+            }
+            return false;
+        }
+
+        public bool unpause_record () {
+            if (_recording) {
+                bool was_pausing = _pausing;
+
+                if (was_pausing) {
+                    pause_end = tee.get_clock().get_time();
+                    Gst.ClockTime pause_duration = pause_end - pause_start;
+                    tee_encode_bin_sink.offset = tee_encode_bin_sink.offset - (int64)pause_duration;
+
+                    link_recorder ();
+
+                    file_sink.sync_state_with_parent ();
+
+                    _pausing = false;
+                    notify_property ("pausing");
+                }
+                return was_pausing;
+            }
+            return false;
+        }
+
+
 
 
         // Pipeline Manipulation.
