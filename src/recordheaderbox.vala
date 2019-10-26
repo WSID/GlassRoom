@@ -36,6 +36,9 @@ namespace GlassRoom {
         private GLib.TimeoutSource? record_time_src;
 
         [GtkChild]
+        private Gtk.Label title_label;
+
+        [GtkChild]
         private Gtk.Revealer subtitle_revealer;
 
         [GtkChild]
@@ -89,6 +92,7 @@ namespace GlassRoom {
 
             record_label.label = (recording) ? "Stop" : "Record";
             record_image.icon_name = (recording) ? "media-playback-stop-symbolic" : "media-record-symbolic";
+            title_label.label = (recording) ? _application.record_file : "Stand By";
         }
 
         private void on_pausing_changed () {

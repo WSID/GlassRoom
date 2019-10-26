@@ -111,6 +111,14 @@ namespace GlassRoom {
             }
         }
 
+        public string record_file {
+            get {
+                unowned string file;
+                file_sink.get ("location", out file);
+                return file;
+            }
+        }
+
 
         construct {
             add_option_group (Gst.init_get_option_group());
