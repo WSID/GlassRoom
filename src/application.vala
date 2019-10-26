@@ -120,15 +120,38 @@ namespace GlassRoom {
         }
 
 
+        // File options
+
+        public GLib.File file_base_path {get; set;}
+        public string    file_name {get; set;}
+
+
         construct {
             add_option_group (Gst.init_get_option_group());
 
             _sources = new GLib.ListStore (typeof (GlassRoom.SrcBin));
+
+            string base_path_str = GLib.Environment.get_user_special_dir (GLib.UserDirectory.VIDEOS);
+            file_base_path = GLib.File.new_for_path (base_path_str);
+            file_name = "video-%c.ogg";
         }
 
         public Application () {
             Object (application_id: "standalone.glassroom.GlassRoom",
                     flags: ApplicationFlags.FLAGS_NONE);
+        }
+
+        /**
+         * Format file name to record.
+         *
+         * Signal handlers are expected to modify `file_name`.
+         *
+         * @param file_name A file name to format.
+         */
+        public virtual signal void format_file_name (ref string file_name) {
+            GLib.DateTime time = new GLib.DateTime.now ();
+
+            file_name = time.format (file_name);
         }
 
         public override void startup () {
@@ -288,11 +311,15 @@ namespace GlassRoom {
          * @return Whether this was not recording.
          */
         public bool start_record (string? path = null) {
-            if (path == null) {
-                path = "/home/wissle/myvid.ogg";
-            }
+            string actual_path = path ?? make_file_name();
 
-            file_sink.set ("location", path);
+            GLib.File actual_file = GLib.File.new_for_path (actual_path);
+            GLib.File actual_dir = actual_file.get_parent ();
+
+            if (! actual_dir.query_exists ())
+                actual_dir.make_directory_with_parents ();
+
+            file_sink.set ("location", path ?? make_file_name());
 
             bool was_not_recording = ! _recording;
             if (was_not_recording) {
@@ -427,6 +454,14 @@ namespace GlassRoom {
             }
         }
 
+        private string make_file_name () {
+            string base_path_string = file_base_path.get_path();
+            string record_file_name = file_name;
+
+            format_file_name (ref record_file_name);
+
+            return base_path_string + "/" + record_file_name;
+        }
 
         private void activate_remove_source (Variant? variant) {
             string src_bin = (string) variant;

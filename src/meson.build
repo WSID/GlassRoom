@@ -7,7 +7,8 @@ glass_room_sources = [
   'srcbin.vala',
   'srcbinrow.vala',
   'srcbinedit.vala',
-  'recordheaderbox.vala'
+  'recordheaderbox.vala',
+  'recordoptionview.vala'
 ]
 
 glass_room_deps = [
