@@ -31,9 +31,15 @@ namespace GlassRoom {
     public class Application: Gtk.Application {
         private GLib.ListStore _sources;
 
+        // Recording status.
         private bool _recording = false;
         private bool _pausing = false;
 
+        private Gst.ClockTime record_in_time;
+        private Gst.ClockTime record_out_time;
+        private Gst.ClockTime record_duration_acc;
+
+        // Pipeline.
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
@@ -69,10 +75,6 @@ namespace GlassRoom {
             }
         }
 
-
-        private Gst.ClockTime pause_start;
-        private Gst.ClockTime pause_end;
-
         /**
          * Whether this is pausing the recording or not.
          *
@@ -93,21 +95,19 @@ namespace GlassRoom {
             }
         }
 
-        private Gst.ClockTime recording_duration_acc;
-        private Gst.ClockTime record_resume_time;
-        public Gst.ClockTime recording_duration {
+        public Gst.ClockTime record_duration {
             get {
                 if (! recording) return 0;
 
-                Gst.ClockTime recording_duration_current = 0;
+                Gst.ClockTime record_duration_current = 0;
 
                 if (! pausing) {
-                    recording_duration_current =
+                    record_duration_current =
                         _pipeline.get_clock().get_time() -
-                        record_resume_time;
+                        record_in_time;
                 }
 
-                return recording_duration_acc + recording_duration_current;
+                return record_duration_acc + record_duration_current;
             }
         }
 
@@ -299,7 +299,7 @@ namespace GlassRoom {
                 encode_bin.sync_state_with_parent ();
                 file_sink.sync_state_with_parent ();
 
-                recording_duration_acc = 0;
+                record_duration_acc = 0;
                 _recording = true;
                 notify_property ("recording");
             }
@@ -355,7 +355,6 @@ namespace GlassRoom {
 
                 if (was_not_pausing) {
                     unlink_recorder (() => {
-                        pause_start = tee.get_clock().get_time();
                         file_sink.set_state (Gst.State.PAUSED);
                     });
                     _pausing = true;
@@ -371,11 +370,9 @@ namespace GlassRoom {
                 bool was_pausing = _pausing;
 
                 if (was_pausing) {
-                    pause_end = tee.get_clock().get_time();
-                    Gst.ClockTime pause_duration = pause_end - pause_start;
-                    tee_encode_bin_sink.offset = tee_encode_bin_sink.offset - (int64)pause_duration;
-
                     link_recorder ();
+                    Gst.ClockTime pause_duration = record_in_time - record_out_time;
+                    tee_encode_bin_sink.offset = tee_encode_bin_sink.offset - (int64)pause_duration;
 
                     file_sink.sync_state_with_parent ();
 
@@ -396,7 +393,7 @@ namespace GlassRoom {
             tee_encode_bin_src = tee.get_request_pad ("src_%u");
             tee_encode_bin_src.link (tee_encode_bin_sink);
 
-            record_resume_time = _pipeline.get_clock().get_time();
+            record_in_time = _pipeline.get_clock().get_time();
         }
 
 
@@ -408,8 +405,8 @@ namespace GlassRoom {
                         pad.unlink (tee_encode_bin_sink);
                         tee.release_request_pad (pad);
 
-                        recording_duration_acc +=
-                            _pipeline.get_clock().get_time() - record_resume_time;
+                        record_out_time = _pipeline.get_clock().get_time();
+                        record_duration_acc += record_out_time - record_in_time;
 
                         callback();
                         return Gst.PadProbeReturn.REMOVE;

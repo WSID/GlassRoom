@@ -99,15 +99,15 @@ namespace GlassRoom {
             if (! pausing) {
                 record_time_src = new GLib.TimeoutSource (33);
                 record_time_src.set_callback (() => {
-                    Gst.ClockTime recording_duration = _application.recording_duration;
+                    Gst.ClockTime record_duration = _application.record_duration;
 
-                    int total_seconds = (int) (recording_duration / Gst.SECOND);
+                    int total_seconds = (int) (record_duration / Gst.SECOND);
 
                     int seconds = total_seconds % 60;
                     int minutes = (total_seconds % 3600) / 60;
                     int hours = total_seconds / 3600;
 
-                    int msecs = (int)(recording_duration / Gst.MSECOND) % 1000;
+                    int msecs = (int)(record_duration / Gst.MSECOND) % 1000;
 
                     subtitle_label.label = "%02d:%02d:%02d.%03d".printf (hours, minutes, seconds, msecs);
                     return true;
