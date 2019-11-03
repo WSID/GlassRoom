@@ -2,6 +2,20 @@
 <!-- Generated with glade 3.22.0 -->
 <interface>
   <requires lib="gtk+" version="3.22"/>
+  <object class="GtkAdjustment" id="video-height_adjustment">
+    <property name="lower">1</property>
+    <property name="upper">8192</property>
+    <property name="value">1080</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">128</property>
+  </object>
+  <object class="GtkAdjustment" id="video_width_adjustment">
+    <property name="lower">1</property>
+    <property name="upper">8192</property>
+    <property name="value">1920</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">128</property>
+  </object>
   <template class="GlassRoomRecordOptionView" parent="GtkStack">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -33,7 +47,7 @@
             <property name="preview_widget_active">False</property>
             <property name="use_preview_label">False</property>
             <property name="title" translatable="yes">Pick Base Path</property>
-            <signal name="selection-changed" handler="on_base_path_set"/>
+            <signal name="selection-changed" handler="on_base_path_set" swapped="no"/>
           </object>
           <packing>
             <property name="left_attach">1</property>
@@ -61,7 +75,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <signal name="clicked" handler="on_file_to_path"/>
+                <signal name="clicked" handler="on_file_to_path" swapped="no"/>
                 <child>
                   <object class="GtkImage">
                     <property name="visible">True</property>
@@ -81,7 +95,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <signal name="clicked" handler="on_path_to_file"/>
+                <signal name="clicked" handler="on_path_to_file" swapped="no"/>
                 <child>
                   <object class="GtkImage">
                     <property name="visible">True</property>
@@ -101,7 +115,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="text" translatable="yes">video-%c.ogg</property>
-                <signal name="changed" handler="on_file_name_set"/>
+                <signal name="changed" handler="on_file_name_set" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -116,6 +130,97 @@
           <packing>
             <property name="left_attach">1</property>
             <property name="top_attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="margin_start">5</property>
+            <property name="margin_top">5</property>
+            <property name="margin_bottom">5</property>
+            <property name="label" translatable="yes">Video Option</property>
+            <property name="xalign">0</property>
+            <attributes>
+              <attribute name="weight" value="bold"/>
+              <attribute name="scale" value="1.25"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">2</property>
+            <property name="width">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Width</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="video_width_spin">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="xalign">1</property>
+            <property name="input_purpose">digits</property>
+            <property name="adjustment">video_width_adjustment</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Height</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="video_height_spin">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="xalign">1</property>
+            <property name="adjustment">video-height_adjustment</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Framerate</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="video_framerate_entry">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="text" translatable="yes">60 / 1</property>
+            <signal name="activate" handler="video_framerate_commit_edit" swapped="no"/>
+            <signal name="focus-out-event" handler="video_framerate_commit_edit_fout" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">5</property>
           </packing>
         </child>
       </object>

@@ -43,6 +43,7 @@ namespace GlassRoom {
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
+        private Gst.Element caps_filter;
         private Gst.Element tee;
         private Gst.Element encode_bin;
         private Gst.Pad? tee_encode_bin_src;
@@ -51,6 +52,7 @@ namespace GlassRoom {
         private Gst.Element file_sink;
         private Gst.Element view_queue;
         private Gst.Element view_sink;
+
 
         private delegate void SimpleCallback ();
 
@@ -125,6 +127,19 @@ namespace GlassRoom {
         public GLib.File file_base_path {get; set;}
         public string    file_name {get; set;}
 
+        // Encoding Profiles
+
+        private Gst.PbUtils.EncodingContainerProfile _encoding_profile;
+        public Gst.PbUtils.EncodingContainerProfile encoding_profile {
+            get {
+                return _encoding_profile;
+            }
+            set {
+                _encoding_profile = value;
+                encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
+                encode_bin.set ("profile", value);
+            }
+        }
 
         construct {
             add_option_group (Gst.init_get_option_group());
@@ -169,28 +184,39 @@ namespace GlassRoom {
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
             _pipeline.message_forward = true;
 
+            caps_filter = Gst.ElementFactory.make ("capsfilter", "caps-filter");
             tee = Gst.ElementFactory.make ("tee", "tee");
             encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
             file_sink = Gst.ElementFactory.make ("filesink", "file-sink");
             view_queue = Gst.ElementFactory.make ("queue", "view-queue");
 
             // TEMP: Prepare profile for recording.
-            Gst.PbUtils.EncodingContainerProfile profile = new Gst.PbUtils.EncodingContainerProfile (
+            _encoding_profile = new Gst.PbUtils.EncodingContainerProfile (
                 "Ogg audio/video",
                 "Standard OGG/THEORA/VORBIS",
                 Gst.Caps.from_string ("application/ogg"), null);
 
-            profile.add_profile (new Gst.PbUtils.EncodingVideoProfile (
-                Gst.Caps.from_string ("video/x-theora"), null, null, 0));
+
+            Gst.Caps video_format =
+                new Gst.Caps.simple ("video/x-raw",
+                    "width", typeof (int), 1920,
+                    "height", typeof (int), 1080,
+                    "framerate", typeof (Gst.Fraction), 60, 1);
+
+            set_video_format (video_format);
+
+            _encoding_profile.add_profile (new Gst.PbUtils.EncodingVideoProfile (
+                new Gst.Caps.simple ("video/x-theora", "width", typeof (int), 1920, "height", typeof (int), 1080, "framerate", typeof (Gst.Fraction), 60, 1), null, null, 0));
 
 
             // Setup element properties.
-            encode_bin.set ("profile", profile);
+            encode_bin.set ("profile", _encoding_profile);
             file_sink.set ("location", "/home/wissle/myvid.ogg");
 
             // linking elemets.
-            _pipeline.add_many (tee, view_queue, encode_bin);
+            _pipeline.add_many (caps_filter, tee, view_queue);
 
+            caps_filter.link (tee);
             tee.get_request_pad ("src_%u").link (view_queue.get_static_pad ("sink"));
 
 
@@ -207,14 +233,14 @@ namespace GlassRoom {
                     // Remove currently connected source.
                     if (source != null) {
                         source.set_state (Gst.State.NULL);
-                        source.unlink (tee);
+                        source.unlink (caps_filter);
                         _pipeline.remove (source);
                     }
 
                     source = (Gst.Element) model.get_item(0);
                     if (source != null) {
                         _pipeline.add (source);
-                        source.link (tee);
+                        source.link (caps_filter);
                         source.sync_state_with_parent();
                         source.set_state (Gst.State.PLAYING);
                     }
@@ -417,6 +443,11 @@ namespace GlassRoom {
                 return was_pausing;
             }
             return false;
+        }
+
+
+        public void set_video_format (Gst.Caps format) {
+            caps_filter.set("caps", format);
         }
 
 

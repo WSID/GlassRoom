@@ -155,6 +155,10 @@ namespace GlassRoom {
 
 
 		public void back_view () {
+		    if (view_page_stack.visible_child == view_record_option_view) {
+		        view_record_option_view.apply_profile();
+		    }
+
 		    view_page_stack.visible_child = view_widget;
 		    view_back_reveal.reveal_child = false;
 		}
