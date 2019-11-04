@@ -43,6 +43,7 @@ namespace GlassRoom {
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
+        private Gst.Element compositor;
         private Gst.Element caps_filter;
         private Gst.Element tee;
         private Gst.Element encode_bin;
@@ -53,14 +54,10 @@ namespace GlassRoom {
         private Gst.Element view_queue;
         private Gst.Element view_sink;
 
+        private Gst.Pad? compositor_pad;
+
 
         private delegate void SimpleCallback ();
-
-        // Overall Pipeline
-
-        //                                            --> queue --> gtksink (preview)
-        //                                           |
-        // [sources: GlassRoom.SrcBin 0..] --> Tee -----> encodebin --> filesink
 
         /**
          * Whether this is recording or not.
@@ -184,6 +181,7 @@ namespace GlassRoom {
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
             _pipeline.message_forward = true;
 
+            compositor = Gst.ElementFactory.make ("compositor", "compositor");
             caps_filter = Gst.ElementFactory.make ("capsfilter", "caps-filter");
             tee = Gst.ElementFactory.make ("tee", "tee");
             encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
@@ -213,7 +211,9 @@ namespace GlassRoom {
             file_sink.set ("location", "/home/wissle/myvid.ogg");
 
             // linking elemets.
-            _pipeline.add_many (caps_filter, tee);
+            _pipeline.add_many (compositor, caps_filter, tee);
+
+            compositor.link (caps_filter);
             caps_filter.link (tee);
 
 
@@ -230,14 +230,18 @@ namespace GlassRoom {
                     // Remove currently connected source.
                     if (source != null) {
                         source.set_state (Gst.State.NULL);
-                        source.unlink (caps_filter);
+                        source.get_static_pad ("src").unlink (compositor_pad);
+                        compositor.release_request_pad (compositor_pad);
+                        compositor_pad = null;
                         _pipeline.remove (source);
                     }
 
                     source = (Gst.Element) model.get_item(0);
                     if (source != null) {
                         _pipeline.add (source);
-                        source.link (caps_filter);
+
+                        compositor_pad = compositor.get_request_pad ("sink_%u");
+                        source.get_static_pad ("src").link (compositor_pad);
                         source.sync_state_with_parent();
                         source.set_state (Gst.State.PLAYING);
                     }
