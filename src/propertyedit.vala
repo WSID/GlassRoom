@@ -244,7 +244,7 @@ namespace GlassRoom {
             return new Gtk.Adjustment ((double) pspec_int.default_value,
                                        (double) pspec_int.minimum,
                                        (double) pspec_int.maximum,
-                                       1.0, 10.0, 50.0);
+                                       1.0, 10.0, 0.0);
         }
     }
 
@@ -279,7 +279,7 @@ namespace GlassRoom {
             return new Gtk.Adjustment ((double) pspec_uint.default_value,
                                        (double) pspec_uint.minimum,
                                        (double) pspec_uint.maximum,
-                                       1.0, 10.0, 50.0);
+                                       1.0, 10.0, 0.0);
         }
     }
 
@@ -312,7 +312,7 @@ namespace GlassRoom {
             return new Gtk.Adjustment ((double) pspec_float.default_value,
                                        (double) pspec_float.minimum,
                                        (double) pspec_float.maximum,
-                                       1.0, 10.0, 50.0);
+                                       1.0, 10.0, 0.0);
         }
     }
 
@@ -342,7 +342,7 @@ namespace GlassRoom {
             return new Gtk.Adjustment ((double) pspec_double.default_value,
                                        (double) pspec_double.minimum,
                                        (double) pspec_double.maximum,
-                                       1.0, 10.0, 50.0);
+                                       1.0, 10.0, 0.0);
         }
     }
 
