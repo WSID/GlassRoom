@@ -188,7 +188,6 @@ namespace GlassRoom {
             tee = Gst.ElementFactory.make ("tee", "tee");
             encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
             file_sink = Gst.ElementFactory.make ("filesink", "file-sink");
-            view_queue = Gst.ElementFactory.make ("queue", "view-queue");
 
             // TEMP: Prepare profile for recording.
             _encoding_profile = new Gst.PbUtils.EncodingContainerProfile (
@@ -214,10 +213,8 @@ namespace GlassRoom {
             file_sink.set ("location", "/home/wissle/myvid.ogg");
 
             // linking elemets.
-            _pipeline.add_many (caps_filter, tee, view_queue);
-
+            _pipeline.add_many (caps_filter, tee);
             caps_filter.link (tee);
-            tee.get_request_pad ("src_%u").link (view_queue.get_static_pad ("sink"));
 
 
             // TODO: This is priliminary connection.
@@ -257,7 +254,8 @@ namespace GlassRoom {
 
                 view_sink = grwindow.view_sink;
                 _pipeline.add (view_sink);
-                view_queue.link (view_sink);
+                //view_queue.link (view_sink);
+                tee.get_request_pad ("src_%u").link (view_sink.get_static_pad ("sink"));
 
                 window = grwindow;
             }
