@@ -43,6 +43,7 @@ namespace GlassRoom {
         public Gst.Pipeline pipeline {get; }
         public GLib.ListModel sources {get { return _sources; } }
 
+        private Gst.Element compositor;
         private Gst.Element caps_filter;
         private Gst.Element tee;
         private Gst.Element encode_bin;
@@ -55,12 +56,6 @@ namespace GlassRoom {
 
 
         private delegate void SimpleCallback ();
-
-        // Overall Pipeline
-
-        //                                            --> queue --> gtksink (preview)
-        //                                           |
-        // [sources: GlassRoom.SrcBin 0..] --> Tee -----> encodebin --> filesink
 
         /**
          * Whether this is recording or not.
@@ -141,6 +136,31 @@ namespace GlassRoom {
             }
         }
 
+        // Video sizes
+        public int video_width {
+            get {
+                Gst.Pad? compositor_src_pad = compositor.get_static_pad ("src");
+                Gst.Caps? compositor_caps = compositor_src_pad.get_current_caps();
+                unowned Gst.Structure structure = compositor_caps.get_structure (0);
+
+                int value = 0;
+                structure.get_int ("width", out value);
+                return value;
+            }
+        }
+
+        public int video_height {
+            get {
+                Gst.Pad? compositor_src_pad = compositor.get_static_pad ("src");
+                Gst.Caps? compositor_caps = compositor_src_pad.get_current_caps();
+                unowned Gst.Structure structure = compositor_caps.get_structure (0);
+
+                int value = 0;
+                structure.get_int ("height", out value);
+                return value;
+            }
+        }
+
         construct {
             add_option_group (Gst.init_get_option_group());
 
@@ -184,6 +204,7 @@ namespace GlassRoom {
             _pipeline = new Gst.Pipeline ("GlassRoom pipeline");
             _pipeline.message_forward = true;
 
+            compositor = Gst.ElementFactory.make ("compositor", "compositor");
             caps_filter = Gst.ElementFactory.make ("capsfilter", "caps-filter");
             tee = Gst.ElementFactory.make ("tee", "tee");
             encode_bin = Gst.ElementFactory.make ("encodebin", "encode-bin");
@@ -213,36 +234,10 @@ namespace GlassRoom {
             file_sink.set ("location", "/home/wissle/myvid.ogg");
 
             // linking elemets.
-            _pipeline.add_many (caps_filter, tee);
+            _pipeline.add_many (compositor, caps_filter, tee);
+
+            compositor.link (caps_filter);
             caps_filter.link (tee);
-
-
-            // TODO: This is priliminary connection.
-            //       1. Assemble pipeline at right position.
-            //       2. Replace test elements into right elements, when ready.
-
-            {
-                // Variables in this section is bound to closure.
-                Gst.Element? source = null;
-                _sources.items_changed.connect ((model, position, n_remove, n_add) => {
-                    // Only picks first source in the model.
-
-                    // Remove currently connected source.
-                    if (source != null) {
-                        source.set_state (Gst.State.NULL);
-                        source.unlink (caps_filter);
-                        _pipeline.remove (source);
-                    }
-
-                    source = (Gst.Element) model.get_item(0);
-                    if (source != null) {
-                        _pipeline.add (source);
-                        source.link (caps_filter);
-                        source.sync_state_with_parent();
-                        source.set_state (Gst.State.PLAYING);
-                    }
-                });
-            }
         }
 
         public override void activate () {
@@ -273,7 +268,15 @@ namespace GlassRoom {
             }
 
             GlassRoom.SrcBin src_bin = new GlassRoom.SrcBin (name, "videotestsrc");
+            _pipeline.add (src_bin);
+
+            Gst.Pad src_pad = src_bin.get_static_pad ("src");
+            Gst.Pad sink_pad = compositor.get_request_pad ("sink_%u");
+
+            src_pad.link (sink_pad);
+
             _sources.append (src_bin);
+            src_bin.sync_state_with_parent();
             return src_bin;
         }
 
@@ -283,7 +286,7 @@ namespace GlassRoom {
 
             while (item != null) {
                 if (item == src_bin) {
-                    _sources.remove (i);
+                    remove_source_internal (i, item);
                     return true;
                 }
 
@@ -299,7 +302,7 @@ namespace GlassRoom {
 
             while (item != null) {
                 if (item.get_name () == src_bin) {
-                    _sources.remove (i - 1);
+                    remove_source_internal (i - 1, item);
                     return true;
                 }
 
@@ -323,6 +326,7 @@ namespace GlassRoom {
             }
             return null;
         }
+
 
 
         // Public Pipeline manipulation.
@@ -452,6 +456,19 @@ namespace GlassRoom {
 
 
         // Pipeline Manipulation.
+
+        private void remove_source_internal (uint index, GlassRoom.SrcBin src_bin) {
+            Gst.Pad src_pad = src_bin.get_static_pad ("src");
+            Gst.Pad sink_pad = src_pad.get_peer ();
+
+            src_pad.unlink (sink_pad);
+            compositor.release_request_pad (sink_pad);
+
+            _pipeline.remove (src_bin);
+
+            _sources.remove (index);
+        }
+
 
         private void link_recorder () {
             tee_encode_bin_src = tee.get_request_pad ("src_%u");
