@@ -136,6 +136,31 @@ namespace GlassRoom {
             }
         }
 
+        // Video sizes
+        public int video_width {
+            get {
+                Gst.Pad? compositor_src_pad = compositor.get_static_pad ("src");
+                Gst.Caps? compositor_caps = compositor_src_pad.get_current_caps();
+                unowned Gst.Structure structure = compositor_caps.get_structure (0);
+
+                int value = 0;
+                structure.get_int ("width", out value);
+                return value;
+            }
+        }
+
+        public int video_height {
+            get {
+                Gst.Pad? compositor_src_pad = compositor.get_static_pad ("src");
+                Gst.Caps? compositor_caps = compositor_src_pad.get_current_caps();
+                unowned Gst.Structure structure = compositor_caps.get_structure (0);
+
+                int value = 0;
+                structure.get_int ("height", out value);
+                return value;
+            }
+        }
+
         construct {
             add_option_group (Gst.init_get_option_group());
 
