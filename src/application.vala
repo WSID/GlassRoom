@@ -303,6 +303,7 @@ namespace GlassRoom {
         }
 
 
+
         // Public Pipeline manipulation.
 
         /**
@@ -437,6 +438,8 @@ namespace GlassRoom {
 
             src_pad.unlink (sink_pad);
             compositor.release_request_pad (sink_pad);
+
+            _pipeline.remove (src_bin);
 
             _sources.remove (index);
         }
